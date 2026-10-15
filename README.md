@@ -44,6 +44,10 @@ docker build -t codestep-java:current ../runners/java
 node ../server/static.mjs & node ../server/api.mjs
 ```
 
-운영에서는 `deploy/codestep-web.service`로 띄우고, codestep 전용 Cloudflare 터널
-(`deploy/codestep-tunnel.service`, Earth 터널과 별개)이
-`codestep.jhinslog.com` → `http://localhost:5180`으로 연결한다 (Cloudflare Access 뒤).
+운영에서는 `deploy/codestep-web.service`·`codestep-api.service`로 띄우고, 서버 공용
+Cloudflare 터널(`jhinslog-server`)의 경로가 `codestep.jhinslog.com` → `http://localhost:5180`으로
+연결한다. 공개 서비스다(`/etc/codestep/api.env`의 `CODESTEP_API_OPEN=1`).
+
+자원은 `deploy/codestep.slice`(CPU 2개·메모리 1G) 안에 묶인다. 웹·API 서비스는
+`Slice=codestep.slice`로, 실행 컨테이너는 `CODESTEP_CGROUP_PARENT=codestep.slice`로 들어간다.
+실행 하나는 다시 CPU 1개·메모리 256MB 컨테이너로 따로 묶이고, 동시에 2개·한 사람(IP)당 1개만 돈다.

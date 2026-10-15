@@ -38,6 +38,9 @@ RestrictNamespaces=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 MemoryMax=256M
+Slice=codestep.slice
+# 슬라이스 메모리가 차면 실행 컨테이너가 먼저 죽도록
+OOMScoreAdjust=-500
 
 [Install]
 WantedBy=multi-user.target

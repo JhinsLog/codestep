@@ -1,0 +1,20 @@
+# codestep 전체 자원 상자. 웹·API 서비스와 사용자 코드 실행 컨테이너가 모두 이 안에 들어간다.
+# 안에서 무슨 일이 생겨도 이 상한을 넘지 못하므로 나머지(Earth 등)는 CPU 2개·메모리 6GB 이상이 남는다.
+#
+# 설치: sudo install -m 644 deploy/codestep.slice /etc/systemd/system/
+#       sudo systemctl daemon-reload
+# 컨테이너는 /etc/codestep/api.env의 CODESTEP_CGROUP_PARENT=codestep.slice로 이 안에 들어온다.
+#
+# 내역(최대치): 웹 256M + API 256M + 실행 컨테이너 256M×2 = 1G
+# MemoryHigh는 두지 않는다. 스왑 없이 넘으면 OOM 대신 슬라이스 전체(웹·API 포함)가
+# 회수 대기로 느려진다(실측). 상한에 닿으면 커널이 이 안에서 하나를 죽이고,
+# 웹·API는 OOMScoreAdjust로 실행 컨테이너보다 뒤에 죽는다.
+[Unit]
+Description=codestep (web, API, run containers)
+Before=slices.target
+
+[Slice]
+CPUQuota=200%
+MemoryMax=1G
+MemorySwapMax=0
+TasksMax=512
