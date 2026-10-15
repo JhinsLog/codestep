@@ -8,6 +8,7 @@ export interface RenderCtx {
   steps: Step[];
   source: string[];
   stdout: string;   // 전체 표준출력. 단계마다 step.out 길이까지가 그 시점의 출력
+  lang?: 'java' | 'python' | 'c';   // 소스 해석(반복문 범위, 값의 출처)에 쓴다
 }
 
 /** 2D·3D 무대가 같이 따르는 모양. 화면은 둘 중 하나를 골라 끼운다 */
@@ -26,6 +27,9 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   if (text !== undefined) n.textContent = text;
   return n;
 }
+
+/** 프레임 이름 표시: 함수는 f(), Python 전역처럼 <module>은 그대로 */
+export const fnLabel = (fn: string): string => (fn.startsWith('<') ? fn : `${fn}()`);
 
 export function showValue(v: Value | undefined, heap?: Record<string, HeapObj>): string {
   if (!v) return '?';
@@ -97,7 +101,7 @@ export class Stage implements StageView {
       const sameFrame = before && before.fn === f.fn && before.cls === f.cls;
       const card = el('div', `frame${ri === 0 ? ' top' : ''}`);
       const head = el('div', 'frame-head');
-      head.append(el('span', 'fn', `${f.fn}()`), el('span', 'muted', ` ${f.cls ?? ''} · ${f.line}줄`));
+      head.append(el('span', 'fn', `${fnLabel(f.fn)}`), el('span', 'muted', ` ${f.cls ?? ''} · ${f.line}줄`));
       card.append(head);
       if (f.locals.length === 0) card.append(el('p', 'muted small', '지역 변수 없음'));
       const table = el('table', 'vars');
@@ -113,11 +117,11 @@ export class Stage implements StageView {
     // ── 반환값 / 예외 배너
     const banners: HTMLElement[] = [];
     if (step.event === 'return' && step.ret) {
-      banners.push(el('div', 'banner ret', `↩ ${inner?.fn ?? ''}() 이 ${showValue(step.ret, heap)} 를 돌려줌`));
+      banners.push(el('div', 'banner ret', `↩ ${fnLabel(inner?.fn ?? '')} 이 ${showValue(step.ret, heap)} 를 돌려줌`));
     } else if (step.event === 'return') {
-      banners.push(el('div', 'banner ret', `↩ ${inner?.fn ?? ''}() 종료`));
+      banners.push(el('div', 'banner ret', `↩ ${fnLabel(inner?.fn ?? '')} 종료`));
     } else if (step.event === 'call') {
-      banners.push(el('div', 'banner call', `→ ${inner?.fn ?? ''}() 호출됨`));
+      banners.push(el('div', 'banner call', `→ ${fnLabel(inner?.fn ?? '')} 호출됨`));
     }
     if (step.event === 'exception') banners.push(el('div', 'banner exc', `⚠ 예외: ${step.exception ?? ''}`));
 

@@ -4,7 +4,7 @@ import type { Trace } from './trace/types';
 /** 실행 API가 아직 공개 전이라 관리자 로그인이 필요할 때 */
 export class LockedError extends Error {}
 
-export async function runCode(lang: 'java' | 'c', code: string): Promise<Trace> {
+export async function runCode(lang: 'java' | 'python' | 'c', code: string): Promise<Trace> {
   let res: Response;
   try {
     res = await fetch('/api/run', {

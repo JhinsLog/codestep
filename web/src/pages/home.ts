@@ -9,7 +9,7 @@ export interface LangCard {
 export const LANGS: LangCard[] = [
   { path: '/java', name: 'Java', desc: '진짜 JVM 디버거로 한 줄씩. 호출 스택, 객체, 컬렉션이 어떻게 바뀌는지 봅니다.', status: 'beta' },
   { path: '/c', name: 'C', desc: '포인터와 메모리, 배열이 실제로 어떻게 움직이는지 봅니다.', status: 'soon' },
-  { path: '/python', name: 'Python', desc: '리스트, 딕셔너리, 재귀를 브라우저 안에서 한 줄씩 따라갑니다.', status: 'soon' },
+  { path: '/python', name: 'Python', desc: '리스트·딕셔너리가 참조로 어떻게 공유되는지, 재귀와 클래스를 한 줄씩 봅니다.', status: 'beta' },
   { path: '/sql', name: 'SQL', desc: '쿼리가 테이블의 행을 하나씩 어떻게 읽고 거르는지 봅니다.', status: 'ready' },
 ];
 

@@ -9,6 +9,7 @@ import { notationSim, pagingSim, procTable, schedSim, subnetDivSim, subnetSim, t
 import { fromLevel } from '../exam/sims/tree';
 import { el } from '../view/stage';
 import { mountJava } from './java';
+import { mountPython } from './python';
 import { mountSql } from './sql';
 import { runSql } from '../sql/engine';
 import { buildSteps, show } from '../sql/steps';
@@ -28,7 +29,7 @@ function saveMark(id: string, m: Mark) {
 const catName = (c: Category) => CATEGORIES.find((x) => x.id === c)?.name ?? c;
 const LANG_NAME = { c: 'C', java: 'Java', python: 'Python' } as const;
 /** 그래픽 풀이(디버거)를 지금 쓸 수 있는 코드 문제 */
-const solvable = (p: Problem) => p.kind === 'sql' || (p.kind === 'code' && p.lang === 'java');
+const solvable = (p: Problem) => p.kind === 'sql' || (p.kind === 'code' && p.lang !== 'c');
 
 function link(href: string, cls: string, text: string): HTMLAnchorElement {
   const a = el('a', cls, text);
@@ -287,6 +288,7 @@ function mountSolve(root: HTMLElement, p: Problem): () => void {
   );
   root.classList.add('exam-solve');
   if (p.kind === 'sql') return mountSql(root, { setup: p.setup, query: p.query, header: bar });
+  if (p.kind === 'code' && p.lang === 'python') return mountPython(root, { code: p.code, header: bar });
   if (p.kind === 'code') return mountJava(root, { code: p.code, header: bar });
   return () => {};
 }

@@ -33,6 +33,7 @@ const CGROUP_PARENT = process.env.CODESTEP_CGROUP_PARENT ?? '';
 
 const IMAGES = {
   java: process.env.CODESTEP_JAVA_IMAGE ?? 'codestep-java:current',
+  python: process.env.CODESTEP_PYTHON_IMAGE ?? 'codestep-python:current',
 };
 
 // 컨테이너 격리 옵션. 사용자 코드는 이 밖으로 나오지 못해야 한다.

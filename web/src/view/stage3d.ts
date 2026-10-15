@@ -16,7 +16,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Frame, HeapObj, Step, Value, Var } from '../trace/types';
-import { el, showValue, type RenderCtx, type StageView } from './stage';
+import { el, fnLabel, showValue, type RenderCtx, type StageView } from './stage';
 import { face, label, release, setAnisotropy, MONO, type Run, type Tex } from './three/text';
 import { isDark, onTheme } from '../theme';
 import { snapshots, type Snapshot } from './three/history';
@@ -738,7 +738,7 @@ export class Stage3D implements StageView {
     const owners = ownersOf(step, fromStep);
 
     // 회차 기록: 전체 기록에서 한 번만 계산하고, 지금 단계까지만 보여 준다 (시작 + 한 바퀴 이상일 때부터)
-    if (this.histCache?.steps !== ctx.steps) this.histCache = { steps: ctx.steps, all: snapshots(ctx.steps, ctx.source) };
+    if (this.histCache?.steps !== ctx.steps) this.histCache = { steps: ctx.steps, all: snapshots(ctx.steps, ctx.source, ctx.lang) };
     this.histNow = new Map();
     for (const [id, list] of this.histCache.all) {
       const upto = list.filter((h) => h.step <= ctx.index);
@@ -833,9 +833,9 @@ export class Stage3D implements StageView {
         const slab = this.slab(L.gen, fk, new Vector3(w / 2, y + 0.07, 0), birthLift);
         slab.shape(w, 0.14, 1.3, p.slabMini);
         slab.glow(false, 0);
-        slab.info = `${f.fn}() · ${f.line}줄 (접힘: 위쪽 ${FULL_FRAMES}개만 펼쳐 보입니다)`;
+        slab.info = `${fnLabel(f.fn)} · ${f.line}줄 (접힘: 위쪽 ${FULL_FRAMES}개만 펼쳐 보입니다)`;
         this.label(L.gen, `${fk}#h`, new Vector3(-0.25, y + 0.1, 0.3), birthLift)
-          .set([{ text: `${f.fn}()`, color: p.muted, size: 34, mono: true }], 0.3, 1, 0.5);
+          .set([{ text: `${fnLabel(f.fn)}`, color: p.muted, size: 34, mono: true }], 0.3, 1, 0.5);
         y += MINI;
         return;
       }
@@ -848,9 +848,9 @@ export class Stage3D implements StageView {
       const exc = isTop && step.event === 'exception';
       slab.shape(w, SLAB_H, 2.1, exc ? p.slabExc : isTop ? p.slabTop : p.slab);
       slab.glow(false, 0);
-      slab.info = `${f.cls ? `${shortType(f.cls)}.` : ''}${f.fn}() · ${f.line}줄 · 지역 변수 ${f.locals.length}개`;
+      slab.info = `${f.cls ? `${shortType(f.cls)}.` : ''}${fnLabel(f.fn)} · ${f.line}줄 · 지역 변수 ${f.locals.length}개`;
       this.label(L.gen, `${fk}#h`, new Vector3(-0.3, y + 0.55, zc + 0.6), birthLift).set([
-        { text: `${f.fn}()`, color: isTop ? p.accent : p.text, size: 46, weight: 700, mono: true },
+        { text: `${fnLabel(f.fn)}`, color: isTop ? p.accent : p.text, size: 46, weight: 700, mono: true },
         { text: `  ${f.line}줄`, color: p.muted, size: 34, weight: 500 },
       ], 0.46, 1, 0.5);
 
@@ -890,7 +890,7 @@ export class Stage3D implements StageView {
       dest: { kind: 'var', name: '', isNew: true }, parentNew: true, frameIndex: -1, paramIndex: -1,
     });
     b.src = { kind: 'ret', name: '' };
-    b.info = `${f.fn}()의 반환값 = ${say(step.ret, step.heap)}`;
+    b.info = `${fnLabel(f.fn)}의 반환값 = ${say(step.ret, step.heap)}`;
     b.setFlashColor(this.pal.ret);
     b.name([{ text: '반환값', color: this.pal.gold, size: 40, weight: 700 }]);
     b.mesh.material.emissive.setHex(this.pal.ret);
@@ -1364,11 +1364,11 @@ export class Stage3D implements StageView {
     const inner = step.frames.at(-1);
     const b = this.ui.banner;
     b.replaceChildren();
-    if (step.event === 'call') b.append(el('div', 'banner call', `→ ${inner?.fn ?? ''}() 호출됨`));
+    if (step.event === 'call') b.append(el('div', 'banner call', `→ ${fnLabel(inner?.fn ?? '')} 호출됨`));
     if (step.event === 'return') {
       b.append(el('div', 'banner ret', step.ret
-        ? `↩ ${inner?.fn ?? ''}() 이 ${showValue(step.ret, step.heap)} 를 돌려줌`
-        : `↩ ${inner?.fn ?? ''}() 종료`));
+        ? `↩ ${fnLabel(inner?.fn ?? '')} 이 ${showValue(step.ret, step.heap)} 를 돌려줌`
+        : `↩ ${fnLabel(inner?.fn ?? '')} 종료`));
     }
     if (step.event === 'exception') b.append(el('div', 'banner exc', `⚠ 예외: ${step.exception ?? ''}`));
   }
@@ -1427,9 +1427,10 @@ export class Stage3D implements StageView {
       ? new Vector3(this.heapOrigin().x0 + W / 2, H / 2 + 0.02, -6.4)
       : new Vector3(this.stackW + 1.8 + W / 2, H / 2 + 0.02, -1.2);
     const board = this.take('out', () => new Board('out'), pos, null, L.gen);
-    board.info = '화면 출력: System.out.println 등으로 찍은 글이 여기에 쌓입니다';
+    const src = OUT_NAME[ctx.lang ?? 'java'];
+    board.info = `화면 출력: ${src}로 찍은 글이 여기에 쌓입니다`;
     this.label(L.gen, 'out#t', pos.clone().add(new Vector3(-W / 2, H / 2 + 0.12, 0)), null).set([
-      { text: '화면 출력', color: p.text, size: 44, weight: 700 }, { text: '  System.out', color: p.muted, size: 36, weight: 600, mono: true },
+      { text: '화면 출력', color: p.text, size: 44, weight: 700 }, { text: `  ${src}`, color: p.muted, size: 36, weight: 600, mono: true },
     ], 0.42, 0, 0);
     const out = ctx.stdout.slice(0, step.out);
     const before = Math.min(fromStep?.out ?? 0, out.length);
@@ -1685,6 +1686,8 @@ export class Stage3D implements StageView {
   };
 }
 
+const OUT_NAME = { java: 'System.out', python: 'print', c: 'printf' } as const;
+
 // ── 범례 ───────────────────────────────────────────────
 
 const LEGEND_KEY = 'codestep.legend';
@@ -1695,7 +1698,7 @@ const LEGEND: [string, string, string][] = [
   ['pin', '깃발', '배열 칸을 가리키는 인덱스 변수 (i, j …)'],
   ['hist', '회차별 기록', '바깥 반복문이 한 바퀴 돌 때마다 배열 모습을 쌓습니다. 노란 칸은 그 바퀴에 바뀐 값'],
   ['gc', '회색으로 가라앉음', '가리키는 참조가 없어져 가비지 컬렉션(GC) 대상이 된 객체'],
-  ['out', '화면 출력', 'System.out으로 찍은 글. 새 글은 초록색'],
+  ['out', '화면 출력', 'System.out·print·printf로 찍은 글. 새 글은 초록색'],
   ['flash', '노란 빛', '방금 값이 바뀐 자리'],
 ];
 

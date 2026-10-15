@@ -24,8 +24,31 @@ export interface Snapshot {
 
 const LOOP_HEAD = /^\s*(?:\}\s*)?(?:for|while)\s*\(/;
 
-/** 소스에서 반복문 범위를 찾는다 (중괄호 기준, 문자열·주석은 지운 뒤) */
-export function findLoops(source: string[]): Loop[] {
+const indentOf = (s: string) => s.length - s.trimStart().length;
+
+/** Python: 들여쓰기로 반복문 범위를 찾는다 */
+function findLoopsPy(source: string[]): Loop[] {
+  const loops: Loop[] = [];
+  source.forEach((raw, i) => {
+    const code = raw.replace(/#.*$/, '');
+    if (!/^\s*(?:for|while)\b.*:\s*$/.test(code)) return;
+    const ind = indentOf(raw);
+    let end = i + 1;
+    for (let j = i + 1; j < source.length; j++) {
+      const t = source[j]!;
+      if (!t.trim() || /^\s*#/.test(t)) continue;
+      if (indentOf(t) <= ind) break;
+      end = j + 1;
+    }
+    loops.push({ line: i + 1, end, outer: false });
+  });
+  for (const l of loops) l.outer = loops.some((o) => o !== l && o.line > l.line && o.line <= l.end);
+  return loops;
+}
+
+/** 소스에서 반복문 범위를 찾는다 (중괄호 기준, 문자열·주석은 지운 뒤). Python은 들여쓰기 기준 */
+export function findLoops(source: string[], lang?: string): Loop[] {
+  if (lang === 'python') return findLoopsPy(source);
   const loops: Loop[] = [];
   // braced: 몸체가 { } 로 묶였다 / waiting: 중괄호 없는 몸체가 또 다른 반복문이라 그것이 끝나기를 기다린다
   const open: { loop: Loop; depth: number; braced: boolean; waiting: boolean }[] = [];
@@ -82,8 +105,8 @@ export function findLoops(source: string[]): Loop[] {
 }
 
 /** 전체 기록에서 바깥 반복문이 한 바퀴 돌 때마다의 배열 모습. 객체 id → 차례대로 */
-export function snapshots(steps: Step[], source: string[]): Map<string, Snapshot[]> {
-  const outer = findLoops(source).filter((l) => l.outer);
+export function snapshots(steps: Step[], source: string[], lang?: string): Map<string, Snapshot[]> {
+  const outer = findLoops(source, lang).filter((l) => l.outer);
   const out = new Map<string, Snapshot[]>();
   if (outer.length === 0) return out;
   const counts = new Map<string, number>();

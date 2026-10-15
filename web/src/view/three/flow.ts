@@ -191,8 +191,9 @@ export function findSource(dest: Dest, value: Value, ctx: Ctx): Source | 'drop' 
   if (value.t === 'ref') return null;           // 참조는 화살표가 옮겨 가는 것으로 보인다
   const line = ctx.line.trim();
 
-  // for (int x : xs) → xs의 칸에서
-  const each = /\bfor\s*\((?:final\s+)?[\w<>[\],.?\s]+?\s+([A-Za-z_$][\w$]*)\s*:\s*([^)]+)\)/.exec(line);
+  // for (int x : xs) / Python: for x in xs: → xs의 칸에서
+  const each = /\bfor\s*\((?:final\s+)?[\w<>[\],.?\s]+?\s+([A-Za-z_$][\w$]*)\s*:\s*([^)]+)\)/.exec(line)
+    ?? /^for\s+([A-Za-z_]\w*)\s+in\s+([A-Za-z_][\w.]*)\s*:/.exec(line);
   if (each && dest.kind === 'var' && dest.name === each[1]) {
     for (const h of holdersNamed(each[2]!.trim(), ctx)) {
       const s = ctx.sources.find((x) => x.kind === 'cell' && x.holder === h && sameValue(x.value, value));
@@ -222,6 +223,15 @@ export function findSource(dest: Dest, value: Value, ctx: Ctx): Source | 'drop' 
   if (at < 0) return null;
   const lhs = body.slice(0, at).trim();
   const rhs = body.slice(at + 1).split(';')[0]!.trim();
+
+  // 동시 대입 (Python): a[j], a[j+1] = a[j+1], a[j] → 왼쪽 k번째 자리는 오른쪽 k번째 식에서
+  const ls = splitArgs(lhs);
+  const rs = splitArgs(rhs);
+  if (ls.length > 1 && ls.length === rs.length) {
+    const k = ls.findIndex((part) => targets(part, dest, ctx));
+    if (k < 0) return null;
+    return sourceOfExpr(rs[k]!, value, ctx, dest) ?? (LITERAL.test(rs[k]!.trim()) ? 'drop' : null);
+  }
   // 왼쪽이 이 자리를 가리키는지 확인 (int t / t / a[j] / this.x)
   const target = lhs.replace(/\[.*\]$/, '').trim().split(/\s+/).at(-1) ?? '';
   if (dest.kind === 'var' || dest.kind === 'field') {
@@ -232,9 +242,23 @@ export function findSource(dest: Dest, value: Value, ctx: Ctx): Source | 'drop' 
 
   const s = sourceOfExpr(rhs, value, ctx, dest);
   if (s) return s;
-  // 리터럴 하나면 위에서 떨어뜨린다: 5, "a", 'c', true, null
-  if (/^(-?\d[\w.]*|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)+'|true|false|null)$/.test(rhs)) return 'drop';
+  // 리터럴 하나면 위에서 떨어뜨린다: 5, "a", 'c', true, null, None
+  if (LITERAL.test(rhs)) return 'drop';
   return null;
+}
+
+const LITERAL = /^(-?\d[\w.]*|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)+'|true|false|null|True|False|None)$/;
+
+/** 대입 왼쪽의 한 자리(x, self.x, a[j])가 이 목적지를 가리키는가 */
+function targets(part: string, dest: Dest, ctx: Ctx): boolean {
+  const t = part.trim();
+  const cell = /^([A-Za-z_$][\w$.]*)\s*\[(.+)\]$/.exec(t);
+  if (cell) {
+    if (dest.kind !== 'cell' || !dest.holder || !holdersNamed(cell[1]!, ctx).includes(dest.holder)) return false;
+    const i = evalIndex(cell[2]!, ctx.vars);
+    return i === null || i === dest.idx;
+  }
+  return (dest.kind === 'var' || dest.kind === 'field') && lastName(t.split(/\s+/).at(-1) ?? '') === dest.name;
 }
 
 /** 새 프레임의 매개변수 k가 호출한 쪽의 어느 값에서 왔는지: foo(a, arr[i]) */
