@@ -3,6 +3,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Emscripten 6.x는 Python 3.10 이상이 필요하다. emsdk_env.sh가 EMSDK_PYTHON을
+# 지우므로 source 뒤에 다시 지정한다.
+if ! command -v emcc >/dev/null; then
+  export EMSDK_PYTHON=${EMSDK_PYTHON:-/usr/bin/python3.12}
+  py=$EMSDK_PYTHON
+  source "${EMSDK:-$HOME/.local/opt/emsdk}/emsdk_env.sh" >/dev/null 2>&1
+  export EMSDK_PYTHON=$py
+fi
+
 SQLITE_ZIP=sqlite-amalgamation-3540000.zip
 SQLITE_URL=https://sqlite.org/2026/$SQLITE_ZIP
 SQLITE_SHA3=7b670a62fdfbd672b75fef004cb703c8a3e87d3a5cc7d675b4a08337004a2d93
