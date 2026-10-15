@@ -41,6 +41,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   background: var(--bg);
@@ -148,7 +149,49 @@ p.muted { margin: 0; }
 .dbg-pos input { flex: 1; }
 .pos { font: 12.5px var(--mono); color: var(--muted); white-space: nowrap; }
 .hint { line-height: 1.4; }
-.stage { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
+.stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.s2d { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
+
+.dbg-controls { align-items: center; }
+.dbg-controls .sep { align-self: stretch; width: 1px; background: var(--line); margin: 2px 2px; }
+.dbg-controls select { padding: 4px 6px; font-size: 13px; }
+button.play { font-weight: 600; min-width: 74px; }
+button.play.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; margin-left: -1px; font-weight: 600; font-size: 12.5px; }
+.seg button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); position: relative; z-index: 1; }
+
+/* ── 3D 무대 ── */
+.s3d {
+  position: relative; flex: 1; min-height: 360px; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+}
+.s3d canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.s3d canvas:active { cursor: grabbing; }
+.s3d-banner {
+  position: absolute; top: 10px; left: 10px; right: 130px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none;
+}
+.s3d-banner .banner { box-shadow: 0 2px 10px rgb(0 0 0 / 0.08); animation: s3d-pop 0.28s ease-out; }
+.s3d-msg {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; color: var(--muted); font-size: 15px; pointer-events: none;
+}
+.s3d-help {
+  position: absolute; left: 10px; bottom: 8px; padding: 2px 9px; border-radius: 99px;
+  font-size: 11.5px; color: var(--muted); pointer-events: none;
+  background: color-mix(in srgb, var(--panel) 75%, transparent);
+}
+.s3d-reset { position: absolute; top: 10px; right: 10px; font-size: 12px; background: var(--panel); }
+.s3d-tip {
+  position: absolute; z-index: 2; max-width: 360px; padding: 5px 9px; border-radius: 6px;
+  background: var(--text); color: var(--panel); font: 12px/1.4 var(--mono); white-space: pre-wrap;
+  pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+}
+@keyframes s3d-pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .s3d-banner .banner { animation: none; } }
 
 .banner { padding: 6px 10px; border-radius: 6px; font: 13px var(--mono); }
 .banner.ret { background: var(--ret); }
@@ -239,5 +282,6 @@ p.muted { margin: 0; }
   .editor-host { height: 50vh; flex: none; }
   .steps { max-height: 40vh; }
   .stage { max-height: none; }
+  .s3d { min-height: 60vh; }
   .nav { margin-left: 0; width: 100%; }
 }

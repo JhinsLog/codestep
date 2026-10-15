@@ -16,11 +16,14 @@
 | `web/` | 화면 (Vite + TypeScript). 첫 화면(언어 선택), Java, SQL |
 | `web/src/trace/types.ts` | **Trace 계약** — 언어별 실행기와 화면 사이의 유일한 약속 |
 | `web/src/trace/session.ts` | 기록된 Trace 위의 디버거 (들어가기·넘어가기·나가기·계속·뒤로·줄 클릭) |
+| `web/src/view/stage3d.ts` | 3D 무대 (three.js): 호출 스택 탑, 힙 객체, 참조 화살표, 값이 옮겨 가는 움직임 |
+| `web/src/view/three/flow.ts` | 값의 출처 추정 — 방금 실행한 줄을 보고 "t = x[j]"면 x[j] 칸에서 t로 날린다 |
 | `runners/java/` | Java 실행기: JDI로 줄 단위 추적, 격리 컨테이너 이미지 |
 | `spikes/sqlite-vdbe/` | 계측한 SQLite 엔진. 실행 루프(VDBE)의 opcode를 행 단위로 기록 (브라우저 WASM) |
 | `server/static.mjs` | `web/dist` 서빙 + `/api/`를 실행 API로 전달 (127.0.0.1:5180) |
 | `server/api.mjs` | 실행 API: 대기열·요청 제한·Access JWT 검증 뒤 컨테이너 실행 (127.0.0.1:5181) |
 | `deploy/` | systemd 서비스 파일 |
+| `tools/screenshot/` | 화면 확인: 공식 Playwright 컨테이너(네트워크 없음)에서 예제를 돌려 찍는다 |
 
 ## 실행 위치
 

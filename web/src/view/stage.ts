@@ -2,6 +2,21 @@
 // Trace 계약만 보고 그리므로 어느 언어의 기록이든 같은 화면이 나온다.
 import type { HeapObj, Step, Value, Var } from '../trace/types';
 
+/** 무대가 그릴 때 받는 맥락: 몇 번째 단계인지, 전체 기록, 실행한 소스 */
+export interface RenderCtx {
+  index: number;
+  steps: Step[];
+  source: string[];
+}
+
+/** 2D·3D 무대가 같이 따르는 모양. 화면은 둘 중 하나를 골라 끼운다 */
+export interface StageView {
+  clear(message?: string): void;
+  render(step: Step, prev: Step | undefined, ctx: RenderCtx): void;
+  setTempo?(ms: number): void;
+  dispose(): void;
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K, cls?: string, text?: string,
 ): HTMLElementTagNameMap[K] {
@@ -33,10 +48,14 @@ const KIND_LABEL: Record<HeapObj['kind'], string> = {
   array: '배열', list: '리스트', stack: '스택', deque: '덱(스택/큐)', set: '집합', map: '맵', object: '객체', opaque: '객체',
 };
 
-export class Stage {
+export class Stage implements StageView {
   private hoverId: string | null = null;
+  private readonly root: HTMLElement;
 
-  constructor(private readonly root: HTMLElement) {
+  constructor(parent: HTMLElement) {
+    const root = el('div', 's2d');
+    parent.append(root);
+    this.root = root;
     root.addEventListener('mouseover', (e) => {
       const id = (e.target as HTMLElement).closest<HTMLElement>('[data-ref]')?.dataset.ref ?? null;
       if (id !== this.hoverId) this.highlight(id);
@@ -58,6 +77,10 @@ export class Stage {
 
   clear(message?: string) {
     this.root.replaceChildren(el('p', 'muted', message ?? '실행하면 여기에 변수와 자료구조가 나타납니다.'));
+  }
+
+  dispose() {
+    this.root.remove();
   }
 
   render(step: Step, prev: Step | undefined) {

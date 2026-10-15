@@ -1,0 +1,4 @@
+[
+  {"name": "bubble", "sample": 4, "actions": [{"goto": 8}, {"wait": 3000}, {"shot": "s8", "el": ".debug"}, {"key": "ArrowRight"}, {"wait": 3000}, {"shot": "s9", "el": ".debug"}]},
+  {"name": "dark", "sample": 9, "dark": true, "actions": [{"key": "End"}, {"wait": 3000}, {"shot": "end"}]}
+]

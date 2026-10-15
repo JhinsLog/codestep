@@ -1,13 +1,14 @@
 // Java 학습 화면: 편집기 + 디버거 + 무대 + 콘솔
 import { java } from '@codemirror/lang-java';
 import { CodeEditor } from '../view/editor';
-import { Stage, el } from '../view/stage';
+import { Stage, el, type StageView } from '../view/stage';
 import { Session } from '../trace/session';
 import type { Trace } from '../trace/types';
 import { runCode, LockedError, loginUrl } from '../api';
 import { JAVA_SAMPLES } from '../java/samples';
 
 const STORE_KEY = 'codestep.java.code';
+const VIEW_KEY = 'codestep.view';
 
 const EVENT_LABEL = { line: '실행 전', call: '호출', return: '반환', exception: '예외' } as const;
 
@@ -29,12 +30,24 @@ const TEMPLATE = `
   </section>
   <section class="panel debug">
     <div class="dbg-controls" role="toolbar" aria-label="디버거">
+      <button data-id="play" class="play" title="한 단계씩 자동으로 진행 (Space)">▶ 재생</button>
+      <select data-id="speed" aria-label="재생 속도" title="재생 속도">
+        <option value="1500">느리게</option>
+        <option value="850" selected>보통</option>
+        <option value="400">빠르게</option>
+      </select>
+      <span class="sep"></span>
       <button data-cmd="first" title="처음으로 (Home)">⏮</button>
       <button data-cmd="back" title="한 단계 뒤로 (←)">↶</button>
       <button data-cmd="over" title="넘어가기: 함수 안으로 들어가지 않음 (F10, ↓)">⤼ 넘어가기</button>
       <button data-cmd="into" title="들어가기: 한 단계씩 (F11, →)">↘ 들어가기</button>
       <button data-cmd="out" title="나가기: 지금 함수가 끝날 때까지 (Shift+F11)">↗ 나가기</button>
       <button data-cmd="continue" title="다음 중단점까지 (F5)">⏭ 계속</button>
+      <span class="grow"></span>
+      <div class="seg" role="group" aria-label="보기 방식">
+        <button data-view="3d" title="입체로 보기">3D</button>
+        <button data-view="2d" title="표로 보기">2D</button>
+      </div>
     </div>
     <div class="dbg-pos">
       <input data-id="slider" type="range" min="0" max="0" value="0" aria-label="단계 이동" />
@@ -57,9 +70,14 @@ export function mountJava(root: HTMLElement): () => void {
     console: q('console'),
     slider: q<HTMLInputElement>('slider'),
     pos: q('pos'),
+    play: q<HTMLButtonElement>('play'),
+    speed: q<HTMLSelectElement>('speed'),
   };
-  const stage = new Stage(q('stage'));
+  const stageHost = q('stage');
+  let stage: StageView = new Stage(stageHost);
   stage.clear();
+  let disposed = false;
+  let sourceLines: string[] = [];
 
   let trace: Trace | null = null;
   let session: Session | null = null;
@@ -74,6 +92,7 @@ export function mountJava(root: HTMLElement): () => void {
     language: java(),
     onLineClick: (line) => {
       if (!session) return;
+      setPlaying(false);
       if (!session.runLine(line)) {
         setStatus(`${line}줄은 실행되지 않았습니다.`);
         return;
@@ -122,7 +141,70 @@ export function mountJava(root: HTMLElement): () => void {
     }
   }
 
+  // ── 보기 방식 (3D 기본, WebGL이 없으면 2D) ──
+  let viewMode: '3d' | '2d' = '3d';
+  try { if (localStorage.getItem(VIEW_KEY) === '2d') viewMode = '2d'; } catch { /* 무시 */ }
+
+  async function setView(mode: '3d' | '2d') {
+    viewMode = mode;
+    try { localStorage.setItem(VIEW_KEY, mode); } catch { /* 무시 */ }
+    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.view === mode));
+    }
+    let next: StageView;
+    if (mode === '3d') {
+      const m = await import('../view/stage3d');
+      if (disposed || viewMode !== '3d') return;
+      try {
+        if (!m.webglAvailable()) throw new Error('no webgl');
+        next = new m.Stage3D(stageHost);
+      } catch {
+        setStatus('이 브라우저에서는 3D(WebGL)를 쓸 수 없어 2D로 보여줍니다.', 'error');
+        viewMode = '2d';
+        for (const b of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+          b.setAttribute('aria-pressed', String(b.dataset.view === '2d'));
+        }
+        next = new Stage(stageHost);
+      }
+    } else next = new Stage(stageHost);
+    stage.dispose();
+    stage = next;
+    stage.setTempo?.(tempo());
+    if (session) render();
+    else stage.clear();
+  }
+
+  // ── 자동 재생 ──
+  let playing = false;
+  let playTimer = 0;
+  const tempo = () => Number(ui.speed.value) || 850;
+
+  function setPlaying(on: boolean) {
+    if (on && !session) return;
+    playing = on;
+    clearTimeout(playTimer);
+    ui.play.textContent = on ? '⏸ 멈춤' : '▶ 재생';
+    ui.play.classList.toggle('on', on);
+    if (!on) return;
+    if (session!.cur >= session!.last) { session!.go(0); render(); }
+    playTimer = window.setTimeout(playTick, tempo());
+  }
+
+  function playTick() {
+    if (!playing || !session) return;
+    session.stepInto();
+    render();
+    const step = session.step;
+    if (session.cur >= session.last || (step && session.breakpoints.has(step.line))) {
+      setPlaying(false);
+      if (step && session.breakpoints.has(step.line)) setStatus(`중단점(${step.line}줄)에서 멈췄습니다.`);
+      return;
+    }
+    playTimer = window.setTimeout(playTick, tempo());
+  }
+
   function stopDebugging() {
+    setPlaying(false);
     trace = null;
     session = null;
     errorLines = [];
@@ -145,6 +227,7 @@ export function mountJava(root: HTMLElement): () => void {
       b.disabled = !has || ((cmd === 'first' || cmd === 'back') ? atStart : atEnd);
     }
     ui.slider.disabled = !has;
+    ui.play.disabled = !has;
   }
 
   function render() {
@@ -154,7 +237,7 @@ export function mountJava(root: HTMLElement): () => void {
     const prev = session.steps[session.cur - 1];
     const kind = step.event === 'exception' ? 'exception' : step.event === 'return' ? 'return' : 'line';
     editor.mark(step.line, errorLines, kind);
-    stage.render(step, prev);
+    stage.render(step, prev, { index: session.cur, steps: session.steps, source: sourceLines });
     ui.console.textContent = trace.stdout.slice(0, step.out);
     ui.slider.max = String(session.last);
     ui.slider.value = String(session.cur);
@@ -184,6 +267,7 @@ export function mountJava(root: HTMLElement): () => void {
         return;
       }
       trace = t;
+      sourceLines = editor.doc.split('\n');
       session = new Session(t);
       for (const l of editor.breakpointLines()) session.breakpoints.add(l);
       errorLines = t.error?.kind === 'runtime' && t.error.line ? [t.error.line] : [];
@@ -205,6 +289,7 @@ export function mountJava(root: HTMLElement): () => void {
 
   function command(cmd: string) {
     if (!session) return;
+    setPlaying(false);
     switch (cmd) {
       case 'first': session.go(0); break;
       case 'back': session.stepBack(); break;
@@ -225,7 +310,13 @@ export function mountJava(root: HTMLElement): () => void {
   for (const b of root.querySelectorAll<HTMLButtonElement>('[data-cmd]')) {
     b.addEventListener('click', () => command(b.dataset.cmd!));
   }
+  ui.play.addEventListener('click', () => setPlaying(!playing));
+  ui.speed.addEventListener('change', () => stage.setTempo?.(tempo()));
+  for (const b of root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+    b.addEventListener('click', () => { if (b.dataset.view !== viewMode) void setView(b.dataset.view as '3d' | '2d'); });
+  }
   ui.slider.addEventListener('input', () => {
+    setPlaying(false);
     session?.go(Number(ui.slider.value));
     render();
   });
@@ -236,6 +327,7 @@ export function mountJava(root: HTMLElement): () => void {
     if (!session || inEditor) return;
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); setPlaying(!playing); return; }
     const map: Record<string, string> = {
       F10: 'over', ArrowDown: 'over', F11: e.shiftKey ? 'out' : 'into', ArrowRight: 'into',
       ArrowLeft: 'back', F5: 'continue', Home: 'first', End: 'last',
@@ -248,8 +340,12 @@ export function mountJava(root: HTMLElement): () => void {
   document.addEventListener('keydown', onKey);
 
   updateButtons();
+  void setView(viewMode);
   return () => {
+    disposed = true;
+    setPlaying(false);
     document.removeEventListener('keydown', onKey);
+    stage.dispose();
     editor.view.destroy();
   };
 }
