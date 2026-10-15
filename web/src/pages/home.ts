@@ -13,7 +13,7 @@ export const LANGS: LangCard[] = [
   { path: '/sql', name: 'SQL', desc: '쿼리가 테이블의 행을 하나씩 어떻게 읽고 거르는지 봅니다.', status: 'ready' },
 ];
 
-const BADGE = { ready: '사용 가능', beta: '비공개 테스트', soon: '준비 중' } as const;
+const BADGE = { ready: '사용 가능', beta: '베타', soon: '준비 중' } as const;
 
 export function mountHome(root: HTMLElement): () => void {
   root.innerHTML = `

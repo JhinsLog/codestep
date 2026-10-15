@@ -23,8 +23,13 @@ const MAX_BODY = 64 * 1024;
 const MAX_CODE = 20 * 1024;
 const MAX_TRACE = 24 * 1024 * 1024;
 const RUN_TIMEOUT_MS = 25_000;
+const MAX_RUNNING = 2;   // 동시에 도는 컨테이너 수. 각자 CPU 1개·메모리 256MB로 따로 묶인다
 const MAX_WAITING = 6;
 const RATE_PER_MIN = 20;
+
+// 모든 실행 컨테이너를 넣을 상위 cgroup(systemd slice). 비우면 Docker 기본 위치.
+// codestep.slice에 CPU·메모리 총량을 걸어 두면 실행이 몇 개든 Earth 몫은 남는다.
+const CGROUP_PARENT = process.env.CODESTEP_CGROUP_PARENT ?? '';
 
 const IMAGES = {
   java: process.env.CODESTEP_JAVA_IMAGE ?? 'codestep-java:current',
@@ -40,7 +45,7 @@ const SANDBOX = [
   '--cap-drop', 'ALL',
   '--security-opt', 'no-new-privileges',
   '--pids-limit', '128',
-  '--memory', '512m', '--memory-swap', '512m',
+  '--memory', '256m', '--memory-swap', '256m',   // 실측 최대 약 80MB
   '--cpus', '1',
   '--ulimit', 'nofile=256:256',
   '--label', 'app=codestep',
@@ -105,6 +110,7 @@ function rateLimited(who) {
 
 let running = 0;
 const waiting = [];
+const active = new Set(); // 지금 실행 중이거나 대기 중인 주체(IP)
 
 function enqueue(job) {
   return new Promise((resolve, reject) => {
@@ -118,7 +124,7 @@ function enqueue(job) {
 }
 
 function pump() {
-  if (running >= 1 || waiting.length === 0) return;
+  if (running >= MAX_RUNNING || waiting.length === 0) return;
   const { job, resolve, reject } = waiting.shift();
   running++;
   job().then(resolve, reject).finally(() => {
@@ -130,7 +136,8 @@ function pump() {
 function runContainer(lang, code) {
   return new Promise((resolve, reject) => {
     const name = `codestep-run-${randomBytes(6).toString('hex')}`;
-    const child = spawn('docker', ['run', '--name', name, ...SANDBOX, IMAGES[lang]], {
+    const parent = CGROUP_PARENT ? ['--cgroup-parent', CGROUP_PARENT] : [];
+    const child = spawn('docker', ['run', '--name', name, ...parent, ...SANDBOX, IMAGES[lang]], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const chunks = [];
@@ -198,7 +205,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   try {
     if (req.method === 'GET' && url.pathname === '/api/health') {
-      send(res, 200, { ok: true, open: OPEN, running, waiting: waiting.length }, req);
+      send(res, 200, { ok: true, open: OPEN, running, waiting: waiting.length, maxRunning: MAX_RUNNING }, req);
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/auth') {
@@ -234,10 +241,20 @@ const server = createServer(async (req, res) => {
         send(res, 413, { error: 'too_large', message: `코드는 ${MAX_CODE / 1024}KB까지 실행할 수 있습니다.` }, req);
         return;
       }
-      const started = Date.now();
-      const trace = await enqueue(() => runContainer(lang, code));
-      console.log(`run ${lang} ${code.length}B ${Date.now() - started}ms ${trace.length}B`);
-      send(res, 200, trace, req);
+      // 한 사람이 실행 칸을 여러 개 차지하지 못하게 한다
+      if (active.has(String(who))) {
+        send(res, 429, { error: 'busy_self', message: '이전 실행이 아직 끝나지 않았습니다. 끝난 뒤 다시 실행하세요.' }, req);
+        return;
+      }
+      active.add(String(who));
+      try {
+        const started = Date.now();
+        const trace = await enqueue(() => runContainer(lang, code));
+        console.log(`run ${lang} ${code.length}B ${Date.now() - started}ms ${trace.length}B`);
+        send(res, 200, trace, req);
+      } finally {
+        active.delete(String(who));
+      }
       return;
     }
     send(res, 404, { error: 'not_found' }, req);
