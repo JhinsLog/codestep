@@ -9,7 +9,24 @@
 
 > codestep은 임시 이름이다.
 
-## 현재 진행 중
+## 구성
 
-`spikes/sqlite-vdbe/` — SQLite 실행 엔진(VDBE)을 계측해 행 단위 처리 과정을
-기록할 수 있는지 검증하는 프로토타입.
+| 경로 | 내용 |
+|---|---|
+| `spikes/sqlite-vdbe/` | 계측한 SQLite 엔진. 실행 루프(VDBE)의 opcode를 행 단위로 기록 (Node·브라우저 WASM 빌드) |
+| `web/` | 화면 (Vite + TypeScript). 지금은 SQL 실행 추적 화면 하나 |
+| `server/static.mjs` | `web/dist`를 127.0.0.1:5180에서 서빙하는 정적 서버 (외부 의존성 없음) |
+| `deploy/` | systemd 서비스 파일 |
+
+## 빌드와 실행
+
+```
+cd web
+npm ci
+npm run engine     # SQLite 엔진 WASM 빌드 (emsdk 필요, spikes/sqlite-vdbe/build.sh)
+npm run build      # 타입 검사 + web/dist 생성
+node ../server/static.mjs
+```
+
+운영에서는 `deploy/codestep-web.service`로 띄우고, Cloudflare 터널이
+`codestep.jhinslog.com` → `http://localhost:5180`으로 연결한다 (Cloudflare Access 뒤).

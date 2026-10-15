@@ -1,0 +1,34 @@
+# codestep 웹 정적 서버
+# 설치: sudo install -m 644 deploy/codestep-web.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable --now codestep-web
+[Unit]
+Description=codestep web (static, 127.0.0.1:5180)
+After=network.target
+
+[Service]
+Type=simple
+User=codestep
+Group=codestep
+Environment=PORT=5180
+ExecStart=/usr/bin/node /home/codestep/codestep/server/static.mjs
+Restart=on-failure
+RestartSec=3
+
+# 이 서비스는 web/dist를 읽기만 한다
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

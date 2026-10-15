@@ -38,8 +38,17 @@ sed -e 's/^SQLITE_PRIVATE int sqlite3VdbeExec($/static void codestep_vdbe_hook(V
     "$SRC" > "$OUT/sqlite3.c"
 cp vendor/sqlite-amalgamation-3540000/sqlite3.h "$OUT/"
 
-emcc -O1 -I"$OUT" \
-  -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_THREADSAFE=0 \
-  -sNODERAWFS=1 -sALLOW_MEMORY_GROWTH=1 \
-  src/hook.c src/main.c -o "$OUT/trace.js"
+FLAGS=(-O2 -I"$OUT" -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_THREADSAFE=0
+       -sALLOW_MEMORY_GROWTH=1)
+
+# Node용: 파일 경로를 받아 실행 (검증·디버깅용)
+emcc "${FLAGS[@]}" -sNODERAWFS=1 src/hook.c src/main.c -o "$OUT/trace.js"
 echo "built $OUT/trace.js"
+
+# 브라우저용: ES 모듈, codestep_run(setup, query)만 내보낸다
+mkdir -p "$OUT/web"
+emcc "${FLAGS[@]}" -DCODESTEP_NO_MAIN \
+  -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web \
+  -sEXPORTED_FUNCTIONS=_codestep_run -sEXPORTED_RUNTIME_METHODS=ccall \
+  src/hook.c src/main.c -o "$OUT/web/sqltrace.mjs"
+echo "built $OUT/web/sqltrace.mjs"

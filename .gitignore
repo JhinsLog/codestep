@@ -5,3 +5,4 @@ spikes/*/vendor/
 .env
 .env.*
 *.log
+web/public/sql/
