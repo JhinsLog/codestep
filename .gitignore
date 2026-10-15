@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+spikes/*/vendor/
+.env
+.env.*
+*.log
