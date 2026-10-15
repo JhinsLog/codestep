@@ -9,7 +9,20 @@ import {
   highlightActiveLine, drawSelection, type DecorationSet,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language';
+import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
+
+// 문법 색은 CSS 변수로: 밝은/어두운 화면을 바꾸면 편집기도 따라 바뀐다 (style.css의 --hl-*)
+const codeColors = HighlightStyle.define([
+  { tag: [t.keyword, t.modifier, t.controlKeyword, t.operatorKeyword, t.definitionKeyword], color: 'var(--hl-kw)' },
+  { tag: [t.typeName, t.className, t.namespace], color: 'var(--hl-type)' },
+  { tag: [t.string, t.character, t.special(t.string)], color: 'var(--hl-str)' },
+  { tag: [t.number, t.bool, t.null, t.atom], color: 'var(--hl-num)' },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: 'var(--hl-comment)', fontStyle: 'italic' },
+  { tag: [t.definition(t.variableName), t.function(t.variableName), t.function(t.propertyName)], color: 'var(--hl-def)' },
+  { tag: [t.operator, t.punctuation, t.bracket], color: 'var(--hl-op)' },
+  { tag: t.invalid, color: 'var(--error)' },
+]);
 
 // ── 중단점 ────────────────────────────────────────────
 
@@ -114,7 +127,7 @@ export class CodeEditor {
           indentOnInput(),
           bracketMatching(),
           highlightActiveLine(),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          syntaxHighlighting(codeColors),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           opts.language,
           // CodeMirror는 <style> 태그로 기본 스타일을 넣는다. 서버의 CSP가 nonce 붙은 것만 허용한다.

@@ -8,7 +8,7 @@
 //
 // Trace 계약만 보므로 어느 언어의 기록이든 같은 화면이 나온다.
 import {
-  AmbientLight, Color, ConeGeometry, DirectionalLight, Fog, GridHelper, Group, HemisphereLight,
+  AmbientLight, CanvasTexture, Color, SRGBColorSpace, ConeGeometry, DirectionalLight, Fog, GridHelper, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, PlaneGeometry,
   QuadraticBezierCurve3, Raycaster, Scene, ShadowMaterial, Sprite, SpriteMaterial, TubeGeometry,
   Vector2, Vector3, WebGLRenderer, type Object3D,
@@ -17,7 +17,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Frame, HeapObj, Step, Value, Var } from '../trace/types';
 import { el, showValue, type RenderCtx, type StageView } from './stage';
-import { face, label, release, setAnisotropy, type Run, type Tex } from './three/text';
+import { face, label, release, setAnisotropy, MONO, type Run, type Tex } from './three/text';
+import { isDark, onTheme } from '../theme';
+import { snapshots, type Snapshot } from './three/history';
 import { argSource, findSource, sameValue, type Ctx, type Dest, type Source } from './three/flow';
 
 // ── 치수 ───────────────────────────────────────────────
@@ -33,6 +35,10 @@ const MAX_CELLS = 48;
 const MAX_ENTRIES = 24;
 const ROW_D = 1.5;        // 배열 줄 간격
 const SLAB_H = 0.2;
+const HIST_ROWS = 8;        // 회차 기록을 보여 주는 최대 줄 수
+const HIST_PITCH = 0.62;    // 기록 줄 간격
+const HIST_CELL = 0.6;      // 기록 칸 간격
+const HIST_LABEL_W = 1.85;  // 기록 줄 이름('3회차 후') 자리
 
 const INDEX_NAME = /^(i|j|k|l|r|m|lo|hi|left|right|mid|low|high|idx|index|start|end|top|front|rear|p|q|pos|cur)$/i;
 
@@ -44,6 +50,7 @@ interface Palette {
   slab: number; slabTop: number; slabMini: number; slabExc: number; heapSlab: number;
   box: Record<'num' | 'str' | 'bool' | 'ref' | 'null' | 'other', [number, string]>;
   arrow: number; arrowHot: number; flash: number; ret: number; marker: number;
+  zoneStack: number; zoneHeap: number; gc: number;
 }
 
 const LIGHT: Palette = {
@@ -55,6 +62,7 @@ const LIGHT: Palette = {
     ref: [0x334155, '#ffffff'], null: [0xe5e7eb, '#6b7280'], other: [0xeceff3, '#475467'],
   },
   arrow: 0x2563eb, arrowHot: 0xf59e0b, flash: 0xf59e0b, ret: 0xfbbf24, marker: 0x2563eb,
+  zoneStack: 0xe3eafb, zoneHeap: 0xe5f1e7, gc: 0xc9ced6,
 };
 
 const DARK: Palette = {
@@ -66,6 +74,7 @@ const DARK: Palette = {
     ref: [0x6ea0ff, '#0f1115'], null: [0x2a2f3a, '#9aa3ae'], other: [0x2a2f3a, '#c0c6d0'],
   },
   arrow: 0x6ea0ff, arrowHot: 0xfbbf24, flash: 0xfbbf24, ret: 0xd69e2e, marker: 0x6ea0ff,
+  zoneStack: 0x141b2b, zoneHeap: 0x122019, gc: 0x3a404b,
 };
 
 const boxColors = (p: Palette, v: Value): [number, string] =>
@@ -75,7 +84,15 @@ const boxColors = (p: Palette, v: Value): [number, string] =>
         : v.t === 'ref' ? p.box.ref
           : v.t === 'null' ? p.box.null : p.box.other;
 
-const faceText = (v: Value): string => (v.t === 'ref' ? '●' : showValue(v));
+// 참조는 객체 번호(#43)로 적는다. 자바는 실제 메모리 주소를 보여 주지 않으므로 JVM이 객체마다 붙인 고유 번호를 쓴다
+const faceText = (v: Value): string => (v.t === 'ref' ? `#${v.id}` : showValue(v));
+
+/** 마우스 설명용 값 표기. 참조는 "참조값 #43 → 힙의 int[]" */
+function say(v: Value, heap: Record<string, HeapObj>): string {
+  if (v.t !== 'ref') return showValue(v, heap);
+  const o = heap[v.id];
+  return `참조값 #${v.id} → 힙의 ${o ? shortType(o.type) : '객체'}`;
+}
 const shortType = (t: string) => t.replace(/\b[\w$]+\./g, '');
 
 // ── 장면 요소 ──────────────────────────────────────────
@@ -99,13 +116,21 @@ abstract class Item {
   targetScale = 1;
   gen = 0;
   dying = false;
+  delay = 0;                        // 이 시간(초)이 지난 뒤에 움직이기 시작한다 (GC 표시를 잠깐 보여 줄 때)
+  ttl = 0;                          // 0보다 크면 이 시간 뒤에 스스로 사라진다
+  readonly half = new Vector3(0.5, 0.5, 0.5);   // 화면 맞춤에 쓰는 반 크기
   constructor(public key: string) {
     this.group.scale.setScalar(0.001);
   }
 
   /** a: 이번 프레임에 남은 거리의 몇 분의 일을 갈지 (0~1). 아직 움직이면 true */
-  tick(a: number, _dt: number): boolean {
-    let moving = false;
+  tick(a: number, dt: number): boolean {
+    if (this.delay > 0) { this.delay -= dt; return true; }
+    if (this.ttl > 0) {
+      this.ttl -= dt;
+      if (this.ttl <= 0) { this.dying = true; this.targetScale = 0; }
+    }
+    let moving = this.ttl > 0;
     const p = this.group.position;
     if (p.distanceToSquared(this.target) > 1e-6) { p.lerp(this.target, a); moving = true; } else p.copy(this.target);
     const s = this.group.scale.x;
@@ -184,6 +209,108 @@ class FloorText extends Item {
   dispose() { this.clear(); }
 }
 
+/** 바닥 구역 (스택 영역·힙 영역) */
+class FloorRect extends Item {
+  readonly mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  constructor(key: string, shapes: Shapes) {
+    super(key);
+    this.mesh = new Mesh(shapes.plane, new MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false }));
+    this.mesh.rotation.x = -Math.PI / 2;
+    this.mesh.position.y = 0.003;
+    this.mesh.renderOrder = -1;
+    this.group.add(this.mesh);
+  }
+
+  set(w: number, d: number, color: number) {
+    this.mesh.scale.set(w, d, 1);
+    this.mesh.material.color.setHex(color);
+    this.half.set(w / 2, 0, d / 2);
+  }
+
+  dispose() { this.mesh.material.dispose(); }
+}
+
+/** 화면 출력판: System.out으로 찍은 글이 쌓이는 단말기 화면 */
+class Board extends Item {
+  static readonly W = 4.6;
+  static readonly H = 2.6;
+  readonly mesh: Mesh<RoundedBoxGeometry, MeshStandardMaterial>;
+  private readonly screen: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private readonly canvas = document.createElement('canvas');
+  private readonly tex: CanvasTexture;
+  private sig = '';
+  private glowT = 0;
+  info = '';
+
+  constructor(key: string) {
+    super(key);
+    const { W, H } = Board;
+    this.half.set(W / 2, H / 2, 0.1);
+    this.mesh = new Mesh(new RoundedBoxGeometry(W, H, 0.18, 2, 0.07),
+      new MeshStandardMaterial({ color: 0x1b2130, roughness: 0.55, emissive: 0x22c55e, emissiveIntensity: 0 }));
+    this.mesh.castShadow = true;
+    this.mesh.userData.item = this;
+    this.canvas.width = 1024;
+    this.canvas.height = Math.round((1024 * (H - 0.3)) / (W - 0.3));
+    this.tex = new CanvasTexture(this.canvas);
+    this.tex.colorSpace = SRGBColorSpace;
+    this.screen = new Mesh(new PlaneGeometry(W - 0.3, H - 0.3), new MeshBasicMaterial({ map: this.tex }));
+    this.screen.position.z = 0.095;
+    this.group.add(this.mesh, this.screen);
+  }
+
+  /** text: 지금까지의 출력, fresh: 이 위치부터는 새로 나온 글 (밝게) */
+  show(text: string, fresh: number) {
+    const sig = `${fresh}|${text}`;
+    if (sig === this.sig) return;
+    this.sig = sig;
+    const g = this.canvas.getContext('2d')!;
+    const { width: w, height: h } = this.canvas;
+    g.fillStyle = '#0b0f14';
+    g.fillRect(0, 0, w, h);
+    g.font = `600 50px ${MONO}`;
+    g.textBaseline = 'top';
+    const lines: { text: string; at: number }[] = [];
+    let at = 0;
+    for (const t of text.split('\n')) { lines.push({ text: t, at }); at += t.length + 1; }
+    if (lines.length && lines.at(-1)!.text === '') lines.pop();
+    if (lines.length === 0) {
+      g.fillStyle = '#5b6576';
+      g.fillText('(아직 출력 없음)', 28, 26);
+    }
+    const max = Math.floor((h - 40) / 64);
+    lines.slice(-max).forEach((l, i) => {
+      let t = l.text;
+      while (t.length > 1 && g.measureText(t).width > w - 56) t = `${t.slice(0, -2)}…`;
+      // 새로 나온 글(fresh 뒤)이 걸친 줄은 밝은 초록, 나머지는 회색
+      const isNew = fresh < text.length && l.at + l.text.length >= fresh;
+      g.fillStyle = isNew ? '#7ee787' : '#c9d1d9';
+      g.fillText(t, 28, 24 + i * 64);
+    });
+    this.tex.needsUpdate = true;
+  }
+
+  ping() { this.glowT = 1; }
+
+  override tick(a: number, dt: number): boolean {
+    let moving = super.tick(a, dt);
+    if (this.glowT > 0) {
+      this.glowT = Math.max(0, this.glowT - dt * 1.2);
+      this.mesh.material.emissiveIntensity = this.glowT * 0.7;
+      moving = true;
+    }
+    return moving;
+  }
+
+  dispose() {
+    this.mesh.geometry.dispose();
+    this.mesh.material.dispose();
+    this.screen.geometry.dispose();
+    this.screen.material.dispose();
+    this.tex.dispose();
+  }
+}
+
 /** 판: 프레임·객체의 바탕 */
 class Slab extends Item {
   readonly mesh: Mesh<RoundedBoxGeometry, MeshStandardMaterial>;
@@ -200,6 +327,7 @@ class Slab extends Item {
   }
 
   shape(w: number, h: number, d: number, color: number) {
+    this.half.set(w / 2, h / 2, d / 2);
     const sig = `${w.toFixed(2)}x${h.toFixed(2)}x${d.toFixed(2)}`;
     if (sig !== this.size) {
       this.size = sig;
@@ -241,6 +369,7 @@ class VBox extends Item {
 
   constructor(key: string, shapes: Shapes) {
     super(key);
+    this.half.set(C / 2, C / 2 + 0.45, C / 2);   // 위쪽 이름표 자리까지
     this.mesh = new Mesh(shapes.box, new MeshStandardMaterial({ roughness: 0.55, emissiveIntensity: 0 }));
     this.mesh.castShadow = true;
     this.mesh.userData.item = this;
@@ -287,6 +416,21 @@ class VBox extends Item {
   }
 
   showTop(on: boolean) { this.top.visible = on; }
+
+  /** 가비지: 회색으로 흐려진다 */
+  fade(gray: number) {
+    this.mesh.material.color.setHex(gray);
+    this.mesh.material.emissiveIntensity = 0;
+    this.flash = 0;
+    for (const m of [this.front.material, this.top.material]) { m.opacity = 0.45; }
+  }
+
+  /** 납작한 판 모양(회차 기록용): 윗면 글자만 보인다 */
+  flat() {
+    this.body.scale.y = 0.3;
+    this.front.visible = false;
+    this.top.visible = true;
+  }
 
   /** 값이 바뀐 자리에서 구르기 */
   tumble() { this.roll = 1; }
@@ -404,10 +548,9 @@ class Arrow {
 
 /** 날아가는 값: 출처 상자에서 목적지 상자로 */
 interface Flight {
-  obj: Group;
-  mat: MeshStandardMaterial;
-  tex: Tex;
-  faceMat: MeshBasicMaterial[];
+  obj: Object3D;
+  dispose: () => void;
+  spin: boolean;
   from: Vector3;
   to: () => Vector3;
   t: number;
@@ -444,7 +587,10 @@ export class Stage3D implements StageView {
   private lastStep: { step: Step; ctx: RenderCtx } | null = null;
   private readonly heapSeq = new Map<string, number>();
   private stackW = 4;
-  private heapFront: number | null = null;   // 힙 객체들의 맨 앞 z (구역 이름 자리)
+  private heapFront: number | null = null;
+  private heapMaxX = 0;
+  private histCache: { steps: Step[]; all: Map<string, Snapshot[]> } | null = null;
+  private histNow = new Map<string, Snapshot[]>();   // 지금 단계까지의 회차 기록 (객체 id → 줄들)   // 힙 객체들의 맨 앞 z (구역 이름 자리)
   private tempo = 800;
   private readonly reduced: boolean;
 
@@ -464,14 +610,13 @@ export class Stage3D implements StageView {
 
   private readonly ui: { banner: HTMLElement; msg: HTMLElement; tip: HTMLElement; reset: HTMLButtonElement };
   private readonly ro: ResizeObserver;
-  private readonly media: MediaQueryList;
+  private readonly offTheme: () => void;
 
   constructor(parent: HTMLElement) {
     this.host = el('div', 's3d');
     parent.append(this.host);
-    this.media = matchMedia('(prefers-color-scheme: dark)');
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.pal = this.media.matches ? DARK : LIGHT;
+    this.pal = isDark() ? DARK : LIGHT;
 
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -489,7 +634,7 @@ export class Stage3D implements StageView {
     reset.addEventListener('click', () => this.resetView());
     const tip = el('div', 's3d-tip');
     tip.hidden = true;
-    this.host.append(banner, msg, help, reset, tip);
+    this.host.append(banner, msg, help, reset, tip, ...legend());
     this.ui = { banner, msg, tip, reset };
 
     this.camera.position.set(6, 10, 18);
@@ -526,7 +671,7 @@ export class Stage3D implements StageView {
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(this.host);
-    this.media.addEventListener('change', this.onTheme);
+    this.offTheme = onTheme(this.onTheme);
     this.resize();
     this.zones();
     this.fit(true);
@@ -547,6 +692,7 @@ export class Stage3D implements StageView {
     this.shown = null;
     this.lastStep = null;
     this.heapFront = null;
+    this.histCache = null;
     this.ui.banner.replaceChildren();
     this.ui.msg.textContent = message ?? '실행하면 여기에 변수와 자료구조가 3D로 나타납니다.';
     this.ui.msg.hidden = false;
@@ -591,10 +737,19 @@ export class Stage3D implements StageView {
     for (const id of Object.keys(step.heap)) if (!this.heapSeq.has(id)) this.heapSeq.set(id, this.heapSeq.size);
     const owners = ownersOf(step, fromStep);
 
+    // 회차 기록: 전체 기록에서 한 번만 계산하고, 지금 단계까지만 보여 준다 (시작 + 한 바퀴 이상일 때부터)
+    if (this.histCache?.steps !== ctx.steps) this.histCache = { steps: ctx.steps, all: snapshots(ctx.steps, ctx.source) };
+    this.histNow = new Map();
+    for (const [id, list] of this.histCache.all) {
+      const upto = list.filter((h) => h.step <= ctx.index);
+      if (upto.length >= 2 && step.heap[id]) this.histNow.set(id, upto);
+    }
+
     this.layoutStack(L, step, fromStep);
     this.layoutHeap(L, step, owners, fromStep);
     this.layoutReturn(L, step);
-    this.zones();
+    this.layoutOutput(L, step, fromStep, ctx, animate && from !== null && ctx.index > from);
+    this.zones(step);
 
     // 넘어가기로 건너뛴 함수 호출의 반환값도 출처 후보
     if (flowOk && from !== null) {
@@ -616,10 +771,21 @@ export class Stage3D implements StageView {
       }
     }
 
-    // 이번에 안 그린 것은 치운다
+    // 이번에 안 그린 것은 치운다. 앞으로 가는 중에 힙 객체가 사라졌다면 아무도 가리키지 않게 된 것 → GC 대상으로 보여 준다
+    const forward = animate && from !== null && ctx.index > from;
+    const garbage = new Map<string, Vector3>();
     for (const it of [...this.items.values()]) {
-      if (it.gen === gen) continue;
-      if (!it.dying) this.retire(it, animate);
+      if (it.gen === gen || it.dying) continue;
+      const m = /^H([^/#~]+)/.exec(it.key);
+      const gone = !!m && forward && step.frames.length > 0 && !(m[1]! in step.heap);
+      if (gone && it instanceof Slab && !it.key.includes('/')) garbage.set(m![1]!, it.target.clone());
+      this.retire(it, animate, gone);
+    }
+    for (const [id, pos] of garbage) {
+      const key = `gc:${id}:${gen}`;
+      const lb = this.label(gen, key, pos.add(new Vector3(0, 1.5, 0)), new Vector3(0, -0.4, 0));
+      lb.set([{ text: `#${id} 참조 없음 → GC 대상`, color: '#ffffff', size: 38, weight: 700 }], 0.42, 0.5, 0, '#b42318');
+      lb.ttl = 1.8;
     }
 
     this.applyChanges(changes, { flowOk, animate, sources, srcPos, owners, step, fromStep, ctx });
@@ -633,7 +799,7 @@ export class Stage3D implements StageView {
   dispose() {
     cancelAnimationFrame(this.raf);
     this.ro.disconnect();
-    this.media.removeEventListener('change', this.onTheme);
+    this.offTheme();
     this.controls.dispose();
     for (const it of this.items.values()) this.drop(it);
     for (const a of this.arrows.values()) a.dispose();
@@ -698,7 +864,7 @@ export class Stage3D implements StageView {
           paramIndex: v.name === 'this' ? -1 : f.locals.filter((x) => x.name !== 'this').indexOf(v),
         });
         b.src = { kind: 'var', name: v.name, frame: fk };
-        b.info = `${v.type} ${v.name} = ${showValue(v.value, step.heap)}`;
+        b.info = `${v.type} ${v.name} = ${say(v.value, step.heap)}`;
         b.name([
           { text: v.name, color: p.text, size: 44, weight: 700, mono: true },
           { text: ` ${shortType(v.type)}`, color: p.muted, size: 32, weight: 500, mono: true },
@@ -724,7 +890,7 @@ export class Stage3D implements StageView {
       dest: { kind: 'var', name: '', isNew: true }, parentNew: true, frameIndex: -1, paramIndex: -1,
     });
     b.src = { kind: 'ret', name: '' };
-    b.info = `${f.fn}()의 반환값 = ${showValue(step.ret, step.heap)}`;
+    b.info = `${f.fn}()의 반환값 = ${say(step.ret, step.heap)}`;
     b.setFlashColor(this.pal.ret);
     b.name([{ text: '반환값', color: this.pal.gold, size: 40, weight: 700 }]);
     b.mesh.material.emissive.setHex(this.pal.ret);
@@ -741,17 +907,20 @@ export class Stage3D implements StageView {
     let x = x0;
     let z = z0;
     let rowD = 0;
+    this.heapMaxX = x0 + 6;
     this.anchors.clear();
     const inner = step.frames.at(-1)?.locals ?? [];
     for (const id of ids) {
       const o = step.heap[id]!;
-      const [w, d] = measure(o);
+      const hist = this.histNow.get(id) ?? [];
+      const [w, d] = measure(o, hist.length, Math.min(MAX_CELLS, 'items' in o ? o.items.length : 0));
       if (x > x0 && x + w > x0 + rowW) {
         x = x0;
         z += rowD + 1.9;
         rowD = 0;
       }
-      this.placeObject(L, id, o, x, z, w, d, owners.get(id) ?? [], inner, fromStep?.heap[id]);
+      this.placeObject(L, id, o, x, z, w, d, owners.get(id) ?? [], inner, fromStep?.heap[id], hist);
+      this.heapMaxX = Math.max(this.heapMaxX, x + w);
       x += w + 1.5;
       rowD = Math.max(rowD, d);
     }
@@ -759,7 +928,7 @@ export class Stage3D implements StageView {
   }
 
   private placeObject(L: Layout, id: string, o: HeapObj, x0: number, z0: number, w: number, d: number,
-    names: string[], inner: Var[], before: HeapObj | undefined) {
+    names: string[], inner: Var[], before: HeapObj | undefined, hist: Snapshot[]) {
     const p = this.pal;
     const hk = `H${id}`;
     const existed = this.items.has(hk);
@@ -778,6 +947,7 @@ export class Stage3D implements StageView {
 
     // 앞쪽 바닥의 이름판
     this.floorText(L.gen, `${hk}#n`, new Vector3(x0, 0, z0 + d + 0.42), birth).set([
+      { text: `#${id} `, color: p.muted, size: 40, weight: 700, mono: true },
       { text: shortType(o.type), color: p.text, size: 46, weight: 700, mono: true },
       { text: `  ${KIND[o.kind]}${'len' in o ? ` ${o.len}` : ''}`, color: p.muted, size: 36, weight: 500 },
       ...(names.length ? [{ text: `  ← ${names.slice(0, 3).join(', ')}`, color: p.accent, size: 38, weight: 700, mono: true }] : []),
@@ -802,7 +972,7 @@ export class Stage3D implements StageView {
             cellOpts(i, !old || i >= old.length));
           b.src = { kind: 'cell', name: '', holder: id, idx: i };
           b.showTop(!tower && n > ROW_CELLS);
-          b.info = `${names[0] ?? shortType(o.type)}[${i}] = ${showValue(v, heap)}`;
+          b.info = `${names[0] ?? shortType(o.type)}[${i}] = ${say(v, heap)}`;
           b.name(null);
           if (v.t === 'ref') this.refs.push({ key: `${hk}/${i}`, from: b.key, to: v.id });
           if (!tower && o.kind !== 'set') {
@@ -829,6 +999,7 @@ export class Stage3D implements StageView {
             .set([{ text: '(비어 있음)', color: p.muted, size: 36 }], 0.32);
         }
         if (!tower && (o.kind === 'array' || o.kind === 'list')) this.markers(L, id, o.items.length, n, inner, posOf);
+        if (hist.length) this.historyRows(L, id, hk, hist, x0, z0 + 0.2 + Math.max(1, Math.ceil(n / ROW_CELLS)) * ROW_D + 0.3, posOf, names);
         break;
       }
       case 'map': {
@@ -848,7 +1019,7 @@ export class Stage3D implements StageView {
           const vb = this.vbox(L, `${hk}/v:${kt}`, v, new Vector3(x0 + 0.3 + C / 2 + 2.1, SLAB_H + C / 2 + 0.02, zr), new Vector3(0, 1.6, 0), {
             dest: { kind: 'val', name: '', holder: id, isNew }, parentNew: !existed, frameIndex: -1, paramIndex: -1,
           });
-          vb.info = `${kt} → ${showValue(v, heap)}`;
+          vb.info = `${kt} → ${say(v, heap)}`;
           vb.showTop(n > 1);
           vb.name(null);
           this.label(L.gen, `${hk}/a:${kt}`, new Vector3(x0 + 0.3 + C + 0.6, SLAB_H + C / 2, zr), birth)
@@ -874,7 +1045,7 @@ export class Stage3D implements StageView {
             parentNew: !existed, frameIndex: -1, paramIndex: -1,
           });
           b.src = { kind: 'field', name: f.name, holder: id };
-          b.info = `${f.type} ${shortType(o.type)}.${f.name} = ${showValue(f.value, heap)}`;
+          b.info = `${f.type} ${shortType(o.type)}.${f.name} = ${say(f.value, heap)}`;
           b.name([
             { text: f.name, color: p.text, size: 42, weight: 700, mono: true },
             { text: ` ${shortType(f.type)}`, color: p.muted, size: 30, weight: 500, mono: true },
@@ -891,6 +1062,47 @@ export class Stage3D implements StageView {
         b.name(null);
         break;
       }
+    }
+  }
+
+  /**
+   * 회차별 기록: 바깥 반복문이 한 바퀴 돌 때마다의 배열 모습을 배열 아래에 납작한 칸 줄로 쌓는다.
+   * 새 줄은 지금 배열 칸에서 내려와 자리를 잡는다 ("이번 바퀴의 결과가 쌓였다").
+   * 바로 앞 줄과 값이 달라진 칸은 노랗게 표시한다.
+   */
+  private historyRows(L: Layout, id: string, hk: string, hist: Snapshot[], x0: number, zTop: number,
+    posOf: (i: number) => Vector3, names: string[]) {
+    const p = this.pal;
+    const shown = hist.slice(-HIST_ROWS);
+    const skipped = hist.length - shown.length;
+    shown.forEach((h, r) => {
+      const prev = hist[skipped + r - 1];
+      const z = zTop + r * HIST_PITCH + HIST_PITCH / 2;
+      const last = r === shown.length - 1;
+      this.label(L.gen, `${hk}#h${h.step}`, new Vector3(x0 + 0.25, SLAB_H + 0.12, z), null).set([
+        { text: h.label, color: last ? p.accent : p.muted, size: 36, weight: last ? 700 : 600 },
+      ], 0.32, 0, 0.5);
+      const n = Math.min(h.items.length, MAX_CELLS);
+      for (let i = 0; i < n; i++) {
+        const v = h.items[i]!;
+        const pos = new Vector3(x0 + HIST_LABEL_W + i * HIST_CELL + HIST_CELL / 2, SLAB_H + 0.09, z);
+        const key = `${hk}/h${h.step}/${i}`;
+        const fresh = !this.items.has(key);
+        // 새 기록 줄은 지금 배열 칸 자리에서 출발해 내려온다
+        const b = this.take(key, () => new VBox(key, this.shapes), pos, fresh ? posOf(i).sub(pos) : null, L.gen);
+        b.look(v, this.pal);
+        b.flat();
+        b.targetScale = HIST_CELL / C * 0.85;
+        b.name(null);
+        b.info = `${h.label}: ${names[0] ?? '배열'}[${i}] = ${say(v, L.step.heap)}`;
+        const changed = !!prev && !sameValue(prev.items[i] ?? { t: 'null' }, v);
+        b.mesh.material.emissive.setHex(p.flash);
+        b.mesh.material.emissiveIntensity = changed ? 0.45 : 0;
+      }
+    });
+    if (skipped > 0) {
+      this.label(L.gen, `${hk}#hmore`, new Vector3(x0 + 0.25, SLAB_H + 0.12, zTop - 0.12), null)
+        .set([{ text: `… 앞의 ${skipped}줄 생략`, color: p.muted, size: 30 }], 0.22, 0, 0.5);
     }
   }
 
@@ -975,10 +1187,17 @@ export class Stage3D implements StageView {
   }
 
   /** 이번 단계에 없는 요소 치우기: 프레임은 떠오르며, 나머지는 줄어들며 */
-  private retire(it: Item, animate: boolean) {
+  private retire(it: Item, animate: boolean, garbage = false) {
     it.dying = true;
     it.targetScale = 0;
     if (/^F\d/.test(it.key)) it.target.y += 2.6;
+    if (garbage) {
+      // 회색으로 바뀐 채 잠깐 머문 뒤 바닥으로 가라앉는다
+      if (it instanceof Slab) it.mesh.material.color.setHex(this.pal.gc);
+      if (it instanceof VBox) it.fade(this.pal.gc);
+      it.delay = 1.0;
+      it.target.y -= 1.0;
+    }
     if (!animate) it.group.scale.setScalar(0.001);
     this.rename(it);
   }
@@ -1065,7 +1284,8 @@ export class Stage3D implements StageView {
     this.scene.add(g);
     const dist = from.distanceTo(dest.target);
     this.flights.push({
-      obj: g, mat, tex, faceMat, from: from.clone(), to: () => dest.target,
+      obj: g, spin: true, from: from.clone(), to: () => dest.target,
+      dispose: () => { mat.dispose(); for (const m of faceMat) m.dispose(); release(tex); },
       t: 0, dur: Math.min(0.75, Math.max(0.22, (this.tempo / 1000) * 0.6)) * (0.8 + Math.min(1, dist / 12) * 0.4),
       arc: 0.8 + dist * 0.18, land,
     });
@@ -1073,9 +1293,22 @@ export class Stage3D implements StageView {
 
   private endFlight(f: Flight) {
     this.scene.remove(f.obj);
-    f.mat.dispose();
-    for (const m of f.faceMat) m.dispose();
-    release(f.tex);
+    f.dispose();
+  }
+
+  /** 출력 쪽지: 새로 찍은 글이 지금 함수에서 출력판으로 날아간다 */
+  private flyText(text: string, from: Vector3, to: () => Vector3, land: () => void) {
+    const tex = label([{ text, color: '#0b0f14', size: 40, weight: 700, mono: true }], '#7ee787');
+    const sp = sprite(tex, 0.42);
+    sp.position.copy(from);
+    this.scene.add(sp);
+    const dist = from.distanceTo(to());
+    this.flights.push({
+      obj: sp, spin: false, from: from.clone(), to,
+      dispose: () => { sp.material.dispose(); release(tex); },
+      t: 0, dur: Math.min(0.9, Math.max(0.3, (this.tempo / 1000) * 0.7)),
+      arc: 1.0 + dist * 0.15, land,
+    });
   }
 
   // ── 화살표 ──────────────────────────────────────────
@@ -1151,15 +1384,68 @@ export class Stage3D implements StageView {
       : { x0: 0, z0: 5.2, rowW: Math.max(this.stackW, Math.min(16, 9.5 * this.camera.aspect)) };
   }
 
-  private zones() {
+  /** 바닥 구역: 스택 영역과 힙 영역을 색으로 나누고 각각 무엇인지 적는다 */
+  private zones(step?: Step) {
     const p = this.pal;
     const g = this.gen;
     const h = this.heapOrigin();
-    this.floorText(g, 'zone:stack', new Vector3(-0.2, 0, this.wide() ? 2.2 : 1.55), null)
-      .set([{ text: '호출 스택', color: p.muted, size: 52, weight: 700 }], 0.62, 0);
-    this.floorText(g, 'zone:heap', new Vector3(h.x0 - 0.2, 0, this.heapFront ?? (this.wide() ? -3.3 : h.z0 - 0.9)), null)
-      .set([{ text: this.heapFront === null ? '힙 — 아직 객체 없음' : '힙 — 객체 · 배열 · 컬렉션', color: p.muted, size: 52, weight: 700 }], 0.62, 0);
+    const full = Math.min(step?.frames.length ?? 1, FULL_FRAMES);
+    // 스택 영역
+    const sx0 = -3.1;
+    const sx1 = this.stackW + 0.6;
+    const sz0 = -(Math.max(1, full) - 1) * 0.35 - 1.4;
+    const sz1 = 3.0;
+    this.take('zone:stack:area', () => new FloorRect('zone:stack:area', this.shapes),
+      new Vector3((sx0 + sx1) / 2, 0, (sz0 + sz1) / 2), null, g).set(sx1 - sx0, sz1 - sz0, p.zoneStack);
+    this.floorText(g, 'zone:stack', new Vector3(sx0 + 0.3, 0, 1.75), null)
+      .set([{ text: '호출 스택', color: p.text, size: 52, weight: 700 }, { text: '  Stack', color: p.muted, size: 40, weight: 600 }], 0.56, 0);
+    this.floorText(g, 'zone:stack:d', new Vector3(sx0 + 0.3, 0, 2.45), null)
+      .set([{ text: '함수를 부르면 판이 쌓이고, 끝나면 사라집니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
+    // 힙 영역
+    const hz0 = this.wide() ? h.z0 - 2.6 : h.z0 - 0.7;
+    const front = this.heapFront ?? h.z0 + 1.5;
+    const hx1 = Math.max(this.heapMaxX, h.x0 + 6) + 0.6;
+    const hz1 = front + 1.5;
+    this.take('zone:heap:area', () => new FloorRect('zone:heap:area', this.shapes),
+      new Vector3((h.x0 - 0.6 + hx1) / 2, 0, (hz0 + hz1) / 2), null, g).set(hx1 - h.x0 + 0.6, hz1 - hz0, p.zoneHeap);
+    this.floorText(g, 'zone:heap', new Vector3(h.x0 - 0.3, 0, front), null).set([
+      { text: '힙', color: p.text, size: 52, weight: 700 }, { text: '  Heap', color: p.muted, size: 40, weight: 600 },
+      ...(this.heapFront === null ? [{ text: '  — 아직 객체 없음', color: p.muted, size: 40, weight: 500 }] : []),
+    ], 0.56, 0);
+    this.floorText(g, 'zone:heap:d', new Vector3(h.x0 - 0.3, 0, front + 0.7), null)
+      .set([{ text: 'new로 만든 객체. 참조가 없어지면 GC가 치웁니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
   }
+
+  // ── 배치: 화면 출력판 ───────────────────────────────
+
+  /** System.out 출력이 있는 프로그램이면 출력판을 세우고, 새 출력은 지금 함수에서 날아간다 */
+  private layoutOutput(L: Layout, step: Step, fromStep: Step | undefined, ctx: RenderCtx, forward: boolean) {
+    if (!ctx.stdout) return;
+    const p = this.pal;
+    const { W, H } = Board;
+    const pos = this.wide()
+      ? new Vector3(this.heapOrigin().x0 + W / 2, H / 2 + 0.02, -6.4)
+      : new Vector3(this.stackW + 1.8 + W / 2, H / 2 + 0.02, -1.2);
+    const board = this.take('out', () => new Board('out'), pos, null, L.gen);
+    board.info = '화면 출력: System.out.println 등으로 찍은 글이 여기에 쌓입니다';
+    this.label(L.gen, 'out#t', pos.clone().add(new Vector3(-W / 2, H / 2 + 0.12, 0)), null).set([
+      { text: '화면 출력', color: p.text, size: 44, weight: 700 }, { text: '  System.out', color: p.muted, size: 36, weight: 600, mono: true },
+    ], 0.42, 0, 0);
+    const out = ctx.stdout.slice(0, step.out);
+    const before = Math.min(fromStep?.out ?? 0, out.length);
+    if (forward && out.length > before) {
+      board.show(ctx.stdout.slice(0, before), before);
+      const added = out.slice(before).replace(/\n$/, '').split('\n').at(-1) ?? '';
+      const top = this.items.get(frameKey(step.frames, step.frames.length - 1))
+        ?? this.items.get(frameKey(fromStep?.frames ?? [], (fromStep?.frames.length ?? 1) - 1));
+      const from = (top ? top.target.clone() : new Vector3()).add(new Vector3(1.2, 1.4, 0.4));
+      this.flyText(added.length > 28 ? `${added.slice(0, 27)}…` : added || '↵', from, () => board.target, () => {
+        board.show(out, before);
+        board.ping();
+      });
+    } else board.show(out, forward ? before : out.length);
+  }
+
 
   // ── 카메라 ──────────────────────────────────────────
 
@@ -1167,9 +1453,10 @@ export class Stage3D implements StageView {
     const min = new Vector3(Infinity, Infinity, Infinity);
     const max = new Vector3(-Infinity, -Infinity, -Infinity);
     for (const it of this.items.values()) {
-      if (it.dying) continue;
-      min.min(it.target);
-      max.max(it.target);
+      // 바닥 구역과 그 설명 글은 꾸밈이라 화면 맞춤에서 뺀다 (잘려도 괜찮다)
+      if (it.dying || it.key.startsWith('zone:')) continue;
+      min.min(it.target.clone().sub(it.half));
+      max.max(it.target.clone().add(it.half));
     }
     if (!Number.isFinite(min.x)) { min.set(-1, 0, -3.5); max.set(this.stackW + 9, 2, 3); }
     // 여백: 옆·앞뒤는 상자 반쯤, 위는 이름표·깃발 자리만큼
@@ -1192,8 +1479,17 @@ export class Stage3D implements StageView {
     let dist = 4;
     let cx = 0;
     let cy = 0;
+    // 전체를 감싼 상자가 아니라 물체 하나하나의 모서리를 쓴다 (빈 구석까지 화면에 넣지 않게)
     const pts: Vector3[] = [];
-    for (const x of [min.x, max.x]) for (const y of [min.y, max.y]) for (const z of [min.z, max.z]) pts.push(new Vector3(x, y, z).sub(center));
+    for (const it of this.items.values()) {
+      if (it.dying || it.key.startsWith('zone:')) continue;
+      const a = it.target.clone().sub(it.half).addScalar(-0.25);
+      const b = it.target.clone().add(it.half).addScalar(0.25);
+      for (const x of [a.x, b.x]) for (const y of [a.y, b.y]) for (const z of [a.z, b.z]) pts.push(new Vector3(x, y, z).sub(center));
+    }
+    if (pts.length === 0) {
+      for (const x of [min.x, max.x]) for (const y of [min.y, max.y]) for (const z of [min.z, max.z]) pts.push(new Vector3(x, y, z).sub(center));
+    }
     // 화면 위아래·좌우 여백을 고르게: 투영 범위의 가운데로 시점을 옮긴다
     const rs = pts.map((q) => q.dot(right));
     const us = pts.map((q) => q.dot(up));
@@ -1266,7 +1562,7 @@ export class Stage3D implements StageView {
       const to = f.to();
       f.obj.position.lerpVectors(f.from, to, e);
       f.obj.position.y += Math.sin(Math.PI * e) * f.arc;
-      f.obj.rotation.y = Math.sin(Math.PI * e) * 0.35;
+      if (f.spin) f.obj.rotation.y = Math.sin(Math.PI * e) * 0.35;
       busy = true;
       if (f.t >= 1) f.land();
     }
@@ -1375,7 +1671,7 @@ export class Stage3D implements StageView {
   }
 
   private readonly onTheme = () => {
-    this.pal = this.media.matches ? DARK : LIGHT;
+    this.pal = isDark() ? DARK : LIGHT;
     this.scene.remove(this.grid);
     this.grid.dispose();
     this.grid = this.makeGrid();
@@ -1387,6 +1683,45 @@ export class Stage3D implements StageView {
     this.userCam = keepUser;
     if (last) this.render(last.step, undefined, last.ctx);
   };
+}
+
+// ── 범례 ───────────────────────────────────────────────
+
+const LEGEND_KEY = 'codestep.legend';
+const LEGEND: [string, string, string][] = [
+  ['val', '값 상자', 'int·double·char·boolean 같은 기본형 값을 그대로 담습니다'],
+  ['ref', '참조 상자 #번호', '객체의 참조값을 담습니다. 화살표 끝의 힙 객체를 가리킵니다'],
+  ['frame', '판 (스택 프레임)', '함수 호출 하나. 맨 위 판이 지금 실행 중인 함수입니다'],
+  ['pin', '깃발', '배열 칸을 가리키는 인덱스 변수 (i, j …)'],
+  ['hist', '회차별 기록', '바깥 반복문이 한 바퀴 돌 때마다 배열 모습을 쌓습니다. 노란 칸은 그 바퀴에 바뀐 값'],
+  ['gc', '회색으로 가라앉음', '가리키는 참조가 없어져 가비지 컬렉션(GC) 대상이 된 객체'],
+  ['out', '화면 출력', 'System.out으로 찍은 글. 새 글은 초록색'],
+  ['flash', '노란 빛', '방금 값이 바뀐 자리'],
+];
+
+/** 오른쪽 위 "범례" 단추와 펼치는 설명 */
+function legend(): HTMLElement[] {
+  const btn = el('button', 's3d-legend-btn', 'ⓘ 범례');
+  const box = el('div', 's3d-legend');
+  for (const [kind, name, desc] of LEGEND) {
+    const row = el('div', 'lg-row');
+    row.append(el('span', `lg-sw lg-${kind}`), el('b', '', name), el('span', 'lg-desc', desc));
+    box.append(row);
+  }
+  box.append(el('p', 'lg-note', '자바는 실제 메모리 주소를 보여 주지 않습니다. #번호는 JVM이 객체마다 붙인 고유 번호라서, 번호가 같으면 같은 객체입니다.'));
+  let open = false;   // 처음에는 접어 둔다 (펼치면 장면을 가린다)
+  try { open = localStorage.getItem(LEGEND_KEY) === 'open'; } catch { /* 무시 */ }
+  const paint = () => {
+    box.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  btn.addEventListener('click', () => {
+    open = !open;
+    try { localStorage.setItem(LEGEND_KEY, open ? 'open' : 'closed'); } catch { /* 무시 */ }
+    paint();
+  });
+  paint();
+  return [btn, box];
 }
 
 // ── 도우미 ─────────────────────────────────────────────
@@ -1473,7 +1808,12 @@ function ownersOf(step: Step, prev: Step | undefined): Map<string, string[]> {
 }
 
 /** 객체가 차지하는 바닥 크기 [너비, 깊이] */
-function measure(o: HeapObj): [number, number] {
+function measure(o: HeapObj, histRows = 0, histCells = 0): [number, number] {
+  if (histRows > 0) {
+    const [w, d] = measure(o);
+    const rows = Math.min(histRows, HIST_ROWS);
+    return [Math.max(w, HIST_LABEL_W + histCells * HIST_CELL + 0.3), d + 0.3 + rows * HIST_PITCH];
+  }
   switch (o.kind) {
     case 'stack': {
       const cols = Math.max(1, Math.ceil(Math.min(o.items.length, MAX_CELLS) / 10));

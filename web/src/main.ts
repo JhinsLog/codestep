@@ -1,4 +1,5 @@
 import './style.css';
+import { setTheme, themePref, onTheme, type ThemePref } from './theme';
 import { mountHome, LANGS } from './pages/home';
 import { mountJava } from './pages/java';
 import { mountSql } from './pages/sql';
@@ -28,6 +29,24 @@ for (const l of LANGS) {
   }
   nav.append(a);
 }
+
+// 화면 색 버튼: 자동(시스템) → 밝게 → 어둡게 → 자동
+const themeBtn = document.getElementById('theme') as HTMLButtonElement;
+const THEME_LABEL: Record<ThemePref, [string, string]> = {
+  system: ['◐ 자동', '화면 색: 시스템 설정을 따름 (누르면 밝게)'],
+  light: ['☀ 밝게', '화면 색: 밝게 (누르면 어둡게)'],
+  dark: ['☾ 어둡게', '화면 색: 어둡게 (누르면 자동)'],
+};
+const NEXT: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' };
+const paintThemeBtn = () => {
+  const [text, title] = THEME_LABEL[themePref()];
+  themeBtn.textContent = text;
+  themeBtn.title = title;
+  themeBtn.setAttribute('aria-label', title);
+};
+themeBtn.addEventListener('click', () => setTheme(NEXT[themePref()]));
+onTheme(paintThemeBtn);
+paintThemeBtn();
 
 function show() {
   const route = ROUTES[location.pathname] ?? ROUTES['/']!;

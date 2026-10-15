@@ -106,12 +106,17 @@ export function mountJava(root: HTMLElement): () => void {
     },
     onChange: (doc) => {
       try { localStorage.setItem(STORE_KEY, doc); } catch { /* 무시 */ }
+      // 불러온 예제를 고치면 더는 그 예제가 아니다 → 선택 표시를 지운다 (같은 예제를 다시 고를 수 있게)
+      const cur = JAVA_SAMPLES[Number(ui.sample.value)];
+      if (ui.sample.value !== '' && cur && cur.code !== doc) ui.sample.value = '';
     },
   });
 
   // 예제 목록 (그룹별)
   const groups = new Map<string, HTMLOptGroupElement>();
-  ui.sample.append(new Option('예제 불러오기…', ''));
+  const placeholder = new Option('예제 불러오기…', '');
+  placeholder.disabled = true;   // 목록에서는 고를 수 없고, 아무 예제도 아닐 때 표시만 된다
+  ui.sample.append(placeholder);
   JAVA_SAMPLES.forEach((s, i) => {
     let g = groups.get(s.group);
     if (!g) {
@@ -122,9 +127,12 @@ export function mountJava(root: HTMLElement): () => void {
     }
     g.append(new Option(s.label, String(i)));
   });
+  // 지금 편집기 내용이 예제 그대로면 그 예제 이름을 보여 준다
+  ui.sample.value = String(JAVA_SAMPLES.findIndex((x) => x.code === editor.doc));
+  if (ui.sample.selectedIndex < 0) ui.sample.value = '';
   ui.sample.addEventListener('change', () => {
+    if (ui.sample.value === '') return;
     const s = JAVA_SAMPLES[Number(ui.sample.value)];
-    ui.sample.value = '';
     if (!s) return;
     stopDebugging();
     editor.setDoc(s.code);
@@ -237,7 +245,7 @@ export function mountJava(root: HTMLElement): () => void {
     const prev = session.steps[session.cur - 1];
     const kind = step.event === 'exception' ? 'exception' : step.event === 'return' ? 'return' : 'line';
     editor.mark(step.line, errorLines, kind);
-    stage.render(step, prev, { index: session.cur, steps: session.steps, source: sourceLines });
+    stage.render(step, prev, { index: session.cur, steps: session.steps, source: sourceLines, stdout: trace.stdout });
     ui.console.textContent = trace.stdout.slice(0, step.out);
     ui.slider.max = String(session.last);
     ui.slider.value = String(session.cur);

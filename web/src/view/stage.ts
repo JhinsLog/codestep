@@ -7,6 +7,7 @@ export interface RenderCtx {
   index: number;
   steps: Step[];
   source: string[];
+  stdout: string;   // 전체 표준출력. 단계마다 step.out 길이까지가 그 시점의 출력
 }
 
 /** 2D·3D 무대가 같이 따르는 모양. 화면은 둘 중 하나를 골라 끼운다 */
