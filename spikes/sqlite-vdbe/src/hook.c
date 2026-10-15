@@ -1,12 +1,12 @@
 /*
-** codestep SQLite 계측 훅 (프로토타입).
+** codestep SQLite 계측 훅.
 **
 ** sqlite3.c를 같은 번역 단위로 포함해 Vdbe·VdbeCursor 내부 구조에 접근한다.
-** patch.sh가 sqlite3VdbeExec 루프 맨 앞에 codestep_vdbe_hook(p, pOp)
+** build.sh가 sqlite3VdbeExec 루프 맨 앞에 codestep_vdbe_hook(p, pOp)
 ** 호출을 넣는다. 훅은 "opcode가 실행되기 직전"에 불리므로, 직전 opcode가
 ** 레지스터에 쓴 값은 다음 호출 때 읽어서 내보낸다.
 **
-** 출력: 한 줄에 JSON 하나 (stdout). 해석은 narrate.mjs가 한다.
+** 출력: 한 줄에 JSON 하나 (stdout). 해석은 web/src/sql/steps.ts가 한다.
 */
 #include "sqlite3.c"
 

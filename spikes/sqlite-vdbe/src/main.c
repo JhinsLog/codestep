@@ -2,8 +2,7 @@
 ** 실행기: setup SQL로 테이블을 만들고, query SQL의 문장 하나를 계측한 채
 ** 실행한다.
 **
-**   node build/trace.js <setup.sql> <query.sql>     (Node 빌드)
-**   Module.ccall('codestep_run', ...)               (브라우저 빌드)
+**   Module.ccall('codestep_run', ...)   브라우저(WASM)에서 호출
 **
 ** 출력(JSON 한 줄씩, stdout):
 **   {"t":"schema",...}  루트 페이지 → 테이블/인덱스 이름과 열 이름
@@ -138,23 +137,3 @@ int codestep_run(const char *zSetup, const char *zQuery){
   sqlite3_close(db);
   return 0;
 }
-
-#ifndef CODESTEP_NO_MAIN
-static char *readFile(const char *zPath){
-  FILE *f = fopen(zPath, "rb");
-  long n;
-  char *z;
-  if( f==0 ){ fprintf(stderr, "cannot open %s\n", zPath); exit(1); }
-  fseek(f, 0, SEEK_END); n = ftell(f); fseek(f, 0, SEEK_SET);
-  z = malloc(n+1);
-  if( fread(z, 1, n, f)!=(size_t)n ){ fprintf(stderr, "read failed\n"); exit(1); }
-  z[n] = 0;
-  fclose(f);
-  return z;
-}
-
-int main(int argc, char **argv){
-  if( argc!=3 ){ fprintf(stderr, "usage: trace <setup.sql> <query.sql>\n"); return 1; }
-  return codestep_run(readFile(argv[1]), readFile(argv[2]));
-}
-#endif

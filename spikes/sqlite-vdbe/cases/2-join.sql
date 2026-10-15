@@ -1,1 +1,0 @@
-SELECT u.name, o.amount FROM users u JOIN orders o ON o.user_id = u.id;

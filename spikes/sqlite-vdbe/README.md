@@ -8,11 +8,11 @@
 SQLite 3.54.0 원본의 실행 루프(`sqlite3VdbeExec`)에 훅 호출 한 줄을 넣는다.
 훅은 opcode가 실행되기 직전에 불려서 opcode와 피연산자, 커서가 가리키는 행의
 rowid, 직전 opcode가 레지스터에 쓴 값, 결과 행을 JSON 한 줄씩 남긴다.
-`narrate.mjs`는 이 기록을 "행 방문 → 값 읽기 → 비교 → 결과" 사건으로 묶는다.
+브라우저 화면(`web/src/sql/`)이 이 기록을 "행 방문 → 값 읽기 → 비교 → 결과" 사건으로 묶는다.
 
 ```
-./build.sh                                        # emsdk 6.0.10, 약 17초
-node build/trace.js cases/setup.sql cases/1-where.sql | node narrate.mjs
+./build.sh          # emsdk 6.0.10 → build/web/sqltrace.mjs·.wasm
+cd ../../web && npm run engine    # 빌드 후 web/public/sql/로 복사
 ```
 
 ## 결과 (2026-10-15) — 성공
@@ -38,4 +38,3 @@ node build/trace.js cases/setup.sql cases/1-where.sql | node narrate.mjs
   점프 대상이 루프의 Next면 "조건 불만족"으로 번역해야 한다
 - 인덱스 항목의 키 값(예: age=34)은 아직 기록하지 않는다
 - 서브쿼리·CTE·윈도 함수(코루틴, OP_Yield)는 시험하지 않았다
-- 지금은 Node용 빌드다. 브라우저 빌드와 JS 콜백 연결은 아직 하지 않았다
