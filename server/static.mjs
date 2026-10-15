@@ -4,7 +4,8 @@
 //   node server/static.mjs            (PORT 기본 5180)
 import { createServer, request } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,19 +26,22 @@ const TYPES = {
   '.json': 'application/json',
 };
 
+// WASM 컴파일에는 'wasm-unsafe-eval'만 허용한다 (일반 eval은 막힌 채로).
+// 편집기(CodeMirror)가 넣는 <style>은 요청마다 새로 만드는 nonce로만 허용한다.
+const csp = (nonce) => [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  nonce ? `style-src 'self' 'nonce-${nonce}'` : "style-src 'self'",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
 const SECURITY_HEADERS = {
-  // WASM 컴파일에는 'wasm-unsafe-eval'만 허용한다 (일반 eval은 막힌 채로)
-  'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self' 'wasm-unsafe-eval'",
-    "style-src 'self'",
-    "img-src 'self' data:",
-    "connect-src 'self'",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-    "frame-ancestors 'none'",
-  ].join('; '),
+  'Content-Security-Policy': csp(null),
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   'Cross-Origin-Opener-Policy': 'same-origin',
@@ -102,6 +106,19 @@ const server = createServer(async (req, res) => {
     return;
   }
   const ext = extname(file.full);
+  if (ext === '.html') {
+    // HTML에는 요청마다 새 nonce를 넣고 CSP도 그 값으로 보낸다. 캐시하면 nonce가 어긋나므로 저장 금지.
+    const nonce = randomBytes(16).toString('base64');
+    const html = Buffer.from((await readFile(file.full, 'utf8')).replaceAll('__CSP_NONCE__', nonce));
+    res.writeHead(200, {
+      'Content-Type': TYPES['.html'],
+      'Content-Length': html.length,
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy': csp(nonce),
+    });
+    res.end(req.method === 'HEAD' ? undefined : html);
+    return;
+  }
   // 해시가 붙은 빌드 산출물만 오래 캐시하고, 나머지는 매번 확인한다
   const hashed = file.full.includes(`${sep}assets${sep}`);
   res.writeHead(200, {

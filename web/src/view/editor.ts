@@ -117,6 +117,8 @@ export class CodeEditor {
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           opts.language,
+          // CodeMirror는 <style> 태그로 기본 스타일을 넣는다. 서버의 CSP가 nonce 붙은 것만 허용한다.
+          EditorView.cspNonce.of(document.querySelector<HTMLMetaElement>('meta[name="csp-nonce"]')?.content ?? ''),
           this.readOnly.of([]),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) opts.onChange(u.state.doc.toString());
