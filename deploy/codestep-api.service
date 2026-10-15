@@ -1,0 +1,43 @@
+# codestep 실행 API (사용자 코드를 격리 컨테이너에서 실행)
+# 설정: /etc/codestep/api.env  (CF_ACCESS_TEAM, CF_ACCESS_AUD — 공개 전 잠금용)
+# 설치: sudo install -m 644 deploy/codestep-api.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable --now codestep-api
+#
+# 주의: docker 소켓을 쓰므로 이 서비스는 사실상 root 권한과 같다. 아래 제한은
+# Node 프로세스 자체의 실수를 줄이는 용도이고, 사용자 코드 격리는 컨테이너 옵션
+# (server/api.mjs의 SANDBOX)이 맡는다.
+[Unit]
+Description=codestep run API (127.0.0.1:5181)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=codestep
+Group=codestep
+SupplementaryGroups=docker
+EnvironmentFile=-/etc/codestep/api.env
+Environment=PORT=5181
+Environment=DOCKER_CONFIG=/run/codestep-api/docker
+RuntimeDirectory=codestep-api
+ExecStart=/usr/bin/node /home/codestep/codestep/server/api.mjs
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

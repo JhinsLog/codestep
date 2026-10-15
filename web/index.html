@@ -3,49 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="코드가 실제로 어떻게 실행되는지 한 줄씩 보여주는 CS 학습 도구" />
     <title>codestep</title>
   </head>
   <body>
     <header class="top">
-      <h1>codestep</h1>
-      <span class="tag">SQL 실행 추적 · 프로토타입</span>
+      <a href="/" data-link class="brand">codestep</a>
+      <span id="crumb" class="crumb"></span>
+      <nav id="nav" class="nav" aria-label="언어"></nav>
     </header>
-    <main class="layout">
-      <section class="panel editor">
-        <label class="field">
-          <span>예제</span>
-          <select id="sample"></select>
-        </label>
-        <label class="field">
-          <span>테이블 준비</span>
-          <textarea id="setup" spellcheck="false" rows="9"></textarea>
-        </label>
-        <label class="field">
-          <span>추적할 쿼리</span>
-          <textarea id="query" spellcheck="false" rows="3"></textarea>
-        </label>
-        <button id="run" class="primary">실행하고 추적</button>
-        <p id="status" class="status" role="status"></p>
-      </section>
-
-      <section class="panel debugger">
-        <div class="controls">
-          <button id="first" title="처음으로 (Home)">⏮</button>
-          <button id="prev" title="이전 단계 (←)">◀</button>
-          <span id="pos" class="pos">0 / 0</span>
-          <button id="next" title="다음 단계 (→)">▶</button>
-          <button id="last" title="끝으로 (End)">⏭</button>
-        </div>
-        <input id="slider" type="range" min="0" max="0" value="0" aria-label="단계 이동" />
-        <ol id="steps" class="steps"></ol>
-      </section>
-
-      <section class="panel stage">
-        <div id="tables"></div>
-        <h2>결과</h2>
-        <div id="results"></div>
-      </section>
-    </main>
+    <main id="app" class="page"></main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

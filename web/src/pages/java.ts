@@ -1,0 +1,255 @@
+// Java 학습 화면: 편집기 + 디버거 + 무대 + 콘솔
+import { java } from '@codemirror/lang-java';
+import { CodeEditor } from '../view/editor';
+import { Stage, el } from '../view/stage';
+import { Session } from '../trace/session';
+import type { Trace } from '../trace/types';
+import { runCode, LockedError, loginUrl } from '../api';
+import { JAVA_SAMPLES } from '../java/samples';
+
+const STORE_KEY = 'codestep.java.code';
+
+const EVENT_LABEL = { line: '실행 전', call: '호출', return: '반환', exception: '예외' } as const;
+
+const TEMPLATE = `
+<div class="ide">
+  <section class="panel code">
+    <div class="toolbar">
+      <select data-id="sample" aria-label="예제"></select>
+      <span class="grow"></span>
+      <button data-id="edit" hidden title="디버그를 끝내고 코드를 고칩니다">✎ 코드 수정</button>
+      <button data-id="run" class="primary" title="Ctrl+Enter">▶ 실행</button>
+    </div>
+    <div class="editor-host" data-id="editor"></div>
+    <p class="status" data-id="status" role="status"></p>
+    <div class="console">
+      <h3>출력</h3>
+      <pre data-id="console"></pre>
+    </div>
+  </section>
+  <section class="panel debug">
+    <div class="dbg-controls" role="toolbar" aria-label="디버거">
+      <button data-cmd="first" title="처음으로 (Home)">⏮</button>
+      <button data-cmd="back" title="한 단계 뒤로 (←)">↶</button>
+      <button data-cmd="over" title="넘어가기: 함수 안으로 들어가지 않음 (F10, ↓)">⤼ 넘어가기</button>
+      <button data-cmd="into" title="들어가기: 한 단계씩 (F11, →)">↘ 들어가기</button>
+      <button data-cmd="out" title="나가기: 지금 함수가 끝날 때까지 (Shift+F11)">↗ 나가기</button>
+      <button data-cmd="continue" title="다음 중단점까지 (F5)">⏭ 계속</button>
+    </div>
+    <div class="dbg-pos">
+      <input data-id="slider" type="range" min="0" max="0" value="0" aria-label="단계 이동" />
+      <span data-id="pos" class="pos">-</span>
+    </div>
+    <p class="hint muted small" data-id="hint">실행한 뒤 코드의 줄을 누르면 그 줄이 실행된 직후로 이동합니다.
+      반복문 안의 줄은 누를 때마다 다음 회차로 갑니다. 줄 번호 왼쪽을 누르면 중단점(●)이 생깁니다.</p>
+    <div class="stage" data-id="stage"></div>
+  </section>
+</div>`;
+
+export function mountJava(root: HTMLElement): () => void {
+  root.innerHTML = TEMPLATE;
+  const q = <T extends HTMLElement>(id: string) => root.querySelector(`[data-id="${id}"]`) as T;
+  const ui = {
+    sample: q<HTMLSelectElement>('sample'),
+    run: q<HTMLButtonElement>('run'),
+    edit: q<HTMLButtonElement>('edit'),
+    status: q('status'),
+    console: q('console'),
+    slider: q<HTMLInputElement>('slider'),
+    pos: q('pos'),
+  };
+  const stage = new Stage(q('stage'));
+  stage.clear();
+
+  let trace: Trace | null = null;
+  let session: Session | null = null;
+  let errorLines: number[] = [];
+
+  let saved: string | null = null;
+  try { saved = localStorage.getItem(STORE_KEY); } catch { /* 저장소를 못 쓰는 환경 */ }
+
+  const editor = new CodeEditor({
+    parent: q('editor'),
+    doc: saved ?? JAVA_SAMPLES[0]!.code,
+    language: java(),
+    onLineClick: (line) => {
+      if (!session) return;
+      if (!session.runLine(line)) {
+        setStatus(`${line}줄은 실행되지 않았습니다.`);
+        return;
+      }
+      render();
+    },
+    onBreakpoints: (lines) => {
+      if (!session) return;
+      session.breakpoints.clear();
+      for (const l of lines) session.breakpoints.add(l);
+    },
+    onChange: (doc) => {
+      try { localStorage.setItem(STORE_KEY, doc); } catch { /* 무시 */ }
+    },
+  });
+
+  // 예제 목록 (그룹별)
+  const groups = new Map<string, HTMLOptGroupElement>();
+  ui.sample.append(new Option('예제 불러오기…', ''));
+  JAVA_SAMPLES.forEach((s, i) => {
+    let g = groups.get(s.group);
+    if (!g) {
+      g = document.createElement('optgroup');
+      g.label = s.group;
+      groups.set(s.group, g);
+      ui.sample.append(g);
+    }
+    g.append(new Option(s.label, String(i)));
+  });
+  ui.sample.addEventListener('change', () => {
+    const s = JAVA_SAMPLES[Number(ui.sample.value)];
+    ui.sample.value = '';
+    if (!s) return;
+    stopDebugging();
+    editor.setDoc(s.code);
+    setStatus(`예제 "${s.label}"를 불러왔습니다. ▶ 실행을 누르세요.`);
+  });
+
+  function setStatus(text: string, kind: '' | 'error' = '', link?: { href: string; label: string }) {
+    ui.status.className = `status ${kind}`;
+    ui.status.replaceChildren(text);
+    if (link) {
+      const a = el('a', 'login', link.label);
+      a.href = link.href;
+      ui.status.append(' ', a);
+    }
+  }
+
+  function stopDebugging() {
+    trace = null;
+    session = null;
+    errorLines = [];
+    editor.setDebugging(false);
+    ui.edit.hidden = true;
+    ui.run.hidden = false;
+    ui.console.textContent = '';
+    ui.slider.max = '0';
+    ui.pos.textContent = '-';
+    stage.clear();
+    updateButtons();
+  }
+
+  function updateButtons() {
+    const has = !!session && session.steps.length > 0;
+    const atStart = !has || session!.cur <= 0;
+    const atEnd = !has || session!.cur >= session!.last;
+    for (const b of root.querySelectorAll<HTMLButtonElement>('[data-cmd]')) {
+      const cmd = b.dataset.cmd;
+      b.disabled = !has || ((cmd === 'first' || cmd === 'back') ? atStart : atEnd);
+    }
+    ui.slider.disabled = !has;
+  }
+
+  function render() {
+    if (!session || !trace) return;
+    const step = session.step;
+    if (!step) return;
+    const prev = session.steps[session.cur - 1];
+    const kind = step.event === 'exception' ? 'exception' : step.event === 'return' ? 'return' : 'line';
+    editor.mark(step.line, errorLines, kind);
+    stage.render(step, prev);
+    ui.console.textContent = trace.stdout.slice(0, step.out);
+    ui.slider.max = String(session.last);
+    ui.slider.value = String(session.cur);
+    const visits = session.visitsOf(step.line);
+    ui.pos.textContent = `${session.cur + 1} / ${session.steps.length}${trace.cut ? '+' : ''} · ${step.line}줄 ${EVENT_LABEL[step.event]}`
+      + (visits > 1 ? ` · ${visits}번째` : '');
+    updateButtons();
+  }
+
+  async function run() {
+    stopDebugging();
+    ui.run.disabled = true;
+    setStatus('컴파일하고 실행하는 중… (보통 2~4초)');
+    try {
+      const t = await runCode('java', editor.doc);
+      if (t.error?.kind === 'compile') {
+        errorLines = (t.error.diagnostics ?? []).map((d) => d.line).filter((l) => l > 0);
+        editor.mark(null, errorLines, 'line');
+        const lines = (t.error.diagnostics ?? []).map((d) => `${d.line}줄: ${d.message}`).join('\n');
+        ui.console.textContent = lines || t.error.message;
+        setStatus(t.error.message, 'error');
+        return;
+      }
+      if (t.steps.length === 0) {
+        ui.console.textContent = t.stdout;
+        setStatus(t.error?.message ?? '기록된 단계가 없습니다.', 'error');
+        return;
+      }
+      trace = t;
+      session = new Session(t);
+      for (const l of editor.breakpointLines()) session.breakpoints.add(l);
+      errorLines = t.error?.kind === 'runtime' && t.error.line ? [t.error.line] : [];
+      editor.setDebugging(true);
+      ui.edit.hidden = false;
+      ui.run.hidden = true;
+      let msg = `${t.steps.length}단계를 기록했습니다.`;
+      if (t.cut) msg += ' 실행이 너무 길어 앞부분만 기록했습니다.';
+      if (t.error?.kind === 'runtime') msg += ` 실행 중 예외로 멈췄습니다 (${t.error.line}줄).`;
+      setStatus(msg, t.error ? 'error' : '');
+      render();
+    } catch (e) {
+      if (e instanceof LockedError) setStatus(e.message, 'error', { href: loginUrl(), label: '관리자 로그인' });
+      else setStatus(e instanceof Error ? e.message : String(e), 'error');
+    } finally {
+      ui.run.disabled = false;
+    }
+  }
+
+  function command(cmd: string) {
+    if (!session) return;
+    switch (cmd) {
+      case 'first': session.go(0); break;
+      case 'back': session.stepBack(); break;
+      case 'over': session.stepOver(); break;
+      case 'into': session.stepInto(); break;
+      case 'out': session.stepOut(); break;
+      case 'continue': session.continue(); break;
+      case 'last': session.go(session.last); break;
+    }
+    render();
+  }
+
+  ui.run.addEventListener('click', () => void run());
+  ui.edit.addEventListener('click', () => {
+    stopDebugging();
+    setStatus('코드를 고친 뒤 다시 ▶ 실행하세요.');
+  });
+  for (const b of root.querySelectorAll<HTMLButtonElement>('[data-cmd]')) {
+    b.addEventListener('click', () => command(b.dataset.cmd!));
+  }
+  ui.slider.addEventListener('input', () => {
+    session?.go(Number(ui.slider.value));
+    render();
+  });
+
+  const onKey = (e: KeyboardEvent) => {
+    const inEditor = (e.target as HTMLElement).closest('.cm-editor') && !session;
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void run(); return; }
+    if (!session || inEditor) return;
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    const map: Record<string, string> = {
+      F10: 'over', ArrowDown: 'over', F11: e.shiftKey ? 'out' : 'into', ArrowRight: 'into',
+      ArrowLeft: 'back', F5: 'continue', Home: 'first', End: 'last',
+    };
+    const cmd = map[e.key];
+    if (!cmd) return;
+    e.preventDefault();
+    command(cmd);
+  };
+  document.addEventListener('keydown', onKey);
+
+  updateButtons();
+  return () => {
+    document.removeEventListener('keydown', onKey);
+    editor.view.destroy();
+  };
+}
