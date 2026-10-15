@@ -28,5 +28,6 @@ npm run build      # 타입 검사 + web/dist 생성
 node ../server/static.mjs
 ```
 
-운영에서는 `deploy/codestep-web.service`로 띄우고, Cloudflare 터널이
+운영에서는 `deploy/codestep-web.service`로 띄우고, codestep 전용 Cloudflare 터널
+(`deploy/codestep-tunnel.service`, Earth 터널과 별개)이
 `codestep.jhinslog.com` → `http://localhost:5180`으로 연결한다 (Cloudflare Access 뒤).
