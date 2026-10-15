@@ -12,7 +12,11 @@
       <a href="/" data-link class="brand">codestep</a>
       <span id="crumb" class="crumb"></span>
       <nav id="nav" class="nav" aria-label="언어"></nav>
-      <button id="theme" class="theme-btn" type="button"></button>
+      <label class="theme-switch" title="다크 모드 켜기/끄기">
+        <input id="theme" type="checkbox" role="switch" />
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span class="theme-label">다크 모드</span>
+      </label>
     </header>
     <main id="app" class="page"></main>
     <script type="module" src="/src/main.ts"></script>

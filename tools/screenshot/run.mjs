@@ -42,7 +42,7 @@ for (const sc of plan) {
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log(`[${sc.name}] console.${m.type()}: ${m.text().slice(0, 300)}`); });
   page.on('pageerror', (e) => console.log(`[${sc.name}] pageerror: ${e.message}`));
   await page.addInitScript(() => document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP 위반: ${e.violatedDirective} ${e.blockedURI}`)));
-  await page.goto('http://127.0.0.1:8080/java');
+  await page.goto(`http://127.0.0.1:8080${sc.url ?? '/java'}`);
   if (sc.view) await page.evaluate((v) => localStorage.setItem('codestep.view', v), sc.view), await page.reload();
   if (sc.code !== undefined) {
     // 예제가 아닌 코드: 편집기 저장소에 넣고 다시 열어 실행한다 (trace는 traces/index.json에 같은 코드로 기록해 둔다)
@@ -61,6 +61,7 @@ for (const sc of plan) {
       await page.evaluate((n) => { const s = document.querySelector('[data-id=slider]'); s.value = String(n); s.dispatchEvent(new Event('input')); }, a.goto);
     } else if (a.key) await page.keyboard.press(a.key);
     else if (a.click) await page.click(a.click);
+    else if (a.fill) await page.fill(a.fill[0], a.fill[1]);
     else if (a.wait) await page.waitForTimeout(a.wait);
     else if (a.hover) await page.mouse.move(a.hover[0], a.hover[1]);
     else if (a.probe) {
@@ -82,7 +83,7 @@ for (const sc of plan) {
     else if (a.shot) {
       const clip = a.el ? await page.locator(a.el).boundingBox() : undefined;
       const t0 = Date.now(); await page.screenshot({ path: `${SHOT}/out/${sc.name}-${a.shot}.png`, clip, timeout: 180000 }); console.log(`[${sc.name}] screenshot ${Date.now() - t0}ms`);
-      const pos = await page.textContent('[data-id=pos]');
+      const pos = await page.locator('[data-id=pos]').textContent({ timeout: 300 }).catch(() => '');
       console.log(`[${sc.name}] shot ${a.shot}: ${pos}`);
     }
   }

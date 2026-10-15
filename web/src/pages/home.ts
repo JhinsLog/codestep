@@ -22,6 +22,13 @@ export function mountHome(root: HTMLElement): () => void {
       <p class="muted">작성한 코드를 진짜로 실행하면서 변수와 자료구조의 변화를 기록합니다.
         디버거처럼 앞뒤로 움직이고, 줄을 누르면 그 줄이 실행된 직후의 상태로 갑니다.</p>
     </section>
+    <a class="exam-feature" href="/exam" data-link>
+      <span class="badge beta">새 기능</span>
+      <h3>정보처리기사 실기 모드</h3>
+      <p>C·Java·Python·SQL 코드 문제와 페이지 교체·CPU 스케줄링·트리 순회·서브넷 문제를 풀고,
+        채점한 뒤 실행 과정을 그래픽으로 따라갑니다.</p>
+      <span class="exam-feature-go">문제 풀러 가기 →</span>
+    </a>
     <section class="langs" aria-label="언어 선택"></section>`;
   const list = root.querySelector('.langs')!;
   for (const l of LANGS) {

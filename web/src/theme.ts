@@ -1,45 +1,34 @@
-// 밝은/어두운 화면. 사용자가 고르면 그것을, 아니면 시스템 설정을 따른다.
+// 밝은/어두운 화면. 사용자가 토글로 고르면 그 값을 기억하고, 고른 적이 없으면 시스템 설정을 따른다.
 //
 // <html data-theme="light|dark">를 정하고, 바뀌면 'codestep:theme' 이벤트를 낸다.
 // CSS는 data-theme이 없을 때 prefers-color-scheme을 따르므로 이 스크립트가 늦게 돌아도
-// 시스템 설정 사용자는 깜빡임이 없다.
-
-export type ThemePref = 'system' | 'light' | 'dark';
+// 시스템 설정과 같은 사용자는 깜빡임이 없다.
 
 const KEY = 'codestep.theme';
 const media = matchMedia('(prefers-color-scheme: dark)');
 
-function load(): ThemePref {
+function saved(): boolean | null {
   try {
     const v = localStorage.getItem(KEY);
-    if (v === 'light' || v === 'dark') return v;
+    if (v === 'light' || v === 'dark') return v === 'dark';
   } catch { /* 저장소를 못 쓰는 환경 */ }
-  return 'system';
+  return null;
 }
 
-let pref: ThemePref = load();
-
-export function themePref(): ThemePref {
-  return pref;
-}
+let chosen: boolean | null = saved();
 
 export function isDark(): boolean {
-  return pref === 'dark' || (pref === 'system' && media.matches);
+  return chosen ?? media.matches;
 }
 
 function apply() {
-  const root = document.documentElement;
-  if (pref === 'system') delete root.dataset.theme;
-  else root.dataset.theme = pref;
+  document.documentElement.dataset.theme = isDark() ? 'dark' : 'light';
   window.dispatchEvent(new Event('codestep:theme'));
 }
 
-export function setTheme(p: ThemePref): void {
-  pref = p;
-  try {
-    if (p === 'system') localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, p);
-  } catch { /* 무시 */ }
+export function setDark(on: boolean): void {
+  chosen = on;
+  try { localStorage.setItem(KEY, on ? 'dark' : 'light'); } catch { /* 무시 */ }
   apply();
 }
 
@@ -50,6 +39,6 @@ export function onTheme(cb: () => void): () => void {
 }
 
 media.addEventListener('change', () => {
-  if (pref === 'system') apply();
+  if (chosen === null) apply();
 });
 apply();

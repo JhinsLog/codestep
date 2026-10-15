@@ -43,8 +43,16 @@ const TEMPLATE = `
   </section>
 </div>`;
 
-export function mountSql(root: HTMLElement): () => void {
+/** 정보처리기사 모드 등에서 문제 SQL을 넣어 열 때 */
+export interface SqlPreset {
+  setup: string;
+  query: string;
+  header?: HTMLElement;
+}
+
+export function mountSql(root: HTMLElement, preset?: SqlPreset): () => void {
   root.innerHTML = TEMPLATE;
+  if (preset?.header) root.prepend(preset.header);
   const q = <T extends HTMLElement>(id: string) => root.querySelector(`[data-id="${id}"]`) as T;
   const ui = {
     sample: q<HTMLSelectElement>('sample'),
@@ -197,7 +205,11 @@ export function mountSql(root: HTMLElement): () => void {
   };
   document.addEventListener('keydown', onKey);
 
-  loadSample(0);
+  if (preset) {
+    (ui.sample.closest('.field') as HTMLElement).hidden = true;
+    ui.setup.value = preset.setup;
+    ui.query.value = preset.query;
+  } else loadSample(0);
   void run();
   return () => document.removeEventListener('keydown', onKey);
 }

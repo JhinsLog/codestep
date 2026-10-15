@@ -1,22 +1,40 @@
 import './style.css';
-import { setTheme, themePref, onTheme, type ThemePref } from './theme';
+import { isDark, setDark, onTheme } from './theme';
 import { mountHome, LANGS } from './pages/home';
 import { mountJava } from './pages/java';
 import { mountSql } from './pages/sql';
+import { mountExam } from './pages/exam';
 
-type Mount = (root: HTMLElement) => () => void;
+type Mount = (root: HTMLElement, path: string) => () => void;
 
-const ROUTES: Record<string, { mount: Mount; title: string }> = {
+// 앞부분이 같은 주소는 그 화면이 나머지를 처리한다 (/exam/<문제>/solve 등)
+const ROUTES: Record<string, { mount: Mount; title: string; prefix?: boolean }> = {
   '/': { mount: mountHome, title: '' },
-  '/java': { mount: mountJava, title: 'Java' },
-  '/sql': { mount: mountSql, title: 'SQL' },
+  '/exam': { mount: mountExam, title: '정보처리기사', prefix: true },
+  '/java': { mount: (r) => mountJava(r), title: 'Java' },
+  '/sql': { mount: (r) => mountSql(r), title: 'SQL' },
 };
+
+function routeOf(path: string) {
+  if (ROUTES[path]) return ROUTES[path];
+  const hit = Object.entries(ROUTES).find(([k, r]) => r.prefix && path.startsWith(`${k}/`));
+  return hit?.[1] ?? ROUTES['/']!;
+}
 
 const app = document.getElementById('app')!;
 const crumb = document.getElementById('crumb')!;
 const nav = document.getElementById('nav')!;
 let unmount: (() => void) | null = null;
 
+// 정보처리기사 모드는 언어들과 따로, 맨 앞에
+{
+  const a = document.createElement('a');
+  a.textContent = '정보처리기사';
+  a.href = '/exam';
+  a.dataset.link = '';
+  a.className = 'nav-exam';
+  nav.append(a);
+}
 for (const l of LANGS) {
   const a = document.createElement('a');
   a.textContent = l.name;
@@ -30,32 +48,25 @@ for (const l of LANGS) {
   nav.append(a);
 }
 
-// 화면 색 버튼: 자동(시스템) → 밝게 → 어둡게 → 자동
-const themeBtn = document.getElementById('theme') as HTMLButtonElement;
-const THEME_LABEL: Record<ThemePref, [string, string]> = {
-  system: ['◐ 자동', '화면 색: 시스템 설정을 따름 (누르면 밝게)'],
-  light: ['☀ 밝게', '화면 색: 밝게 (누르면 어둡게)'],
-  dark: ['☾ 어둡게', '화면 색: 어둡게 (누르면 자동)'],
-};
-const NEXT: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' };
-const paintThemeBtn = () => {
-  const [text, title] = THEME_LABEL[themePref()];
-  themeBtn.textContent = text;
-  themeBtn.title = title;
-  themeBtn.setAttribute('aria-label', title);
-};
-themeBtn.addEventListener('click', () => setTheme(NEXT[themePref()]));
-onTheme(paintThemeBtn);
-paintThemeBtn();
+// 다크 모드 토글
+const themeSwitch = document.getElementById('theme') as HTMLInputElement;
+themeSwitch.checked = isDark();
+themeSwitch.addEventListener('change', () => setDark(themeSwitch.checked));
+onTheme(() => { themeSwitch.checked = isDark(); });
 
 function show() {
-  const route = ROUTES[location.pathname] ?? ROUTES['/']!;
+  const path = location.pathname;
+  const route = routeOf(path);
   unmount?.();
-  app.className = location.pathname === '/' ? 'page home' : 'page';
+  app.className = path === '/' ? 'page home' : 'page';
   crumb.textContent = route.title;
   document.title = route.title ? `${route.title} · codestep` : 'codestep';
-  for (const a of nav.querySelectorAll('a')) a.classList.toggle('active', a.getAttribute('href') === location.pathname);
-  unmount = route.mount(app);
+  for (const a of nav.querySelectorAll('a')) {
+    const href = a.getAttribute('href');
+    a.classList.toggle('active', !!href && (href === path || path.startsWith(`${href}/`)));
+  }
+  unmount = route.mount(app, path);
+  window.scrollTo(0, 0);
 }
 
 document.addEventListener('click', (e) => {
