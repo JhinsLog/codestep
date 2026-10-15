@@ -34,6 +34,7 @@ const CGROUP_PARENT = process.env.CODESTEP_CGROUP_PARENT ?? '';
 const IMAGES = {
   java: process.env.CODESTEP_JAVA_IMAGE ?? 'codestep-java:current',
   python: process.env.CODESTEP_PYTHON_IMAGE ?? 'codestep-python:current',
+  c: process.env.CODESTEP_C_IMAGE ?? 'codestep-c:current',
 };
 
 // 컨테이너 격리 옵션. 사용자 코드는 이 밖으로 나오지 못해야 한다.
@@ -41,7 +42,6 @@ const SANDBOX = [
   '--rm', '-i',
   '--network', 'none',
   '--read-only',
-  '--tmpfs', '/work:rw,size=32m,mode=1777',
   '--tmpfs', '/tmp:rw,size=16m,mode=1777',
   '--cap-drop', 'ALL',
   '--security-opt', 'no-new-privileges',
@@ -138,7 +138,9 @@ function runContainer(lang, code) {
   return new Promise((resolve, reject) => {
     const name = `codestep-run-${randomBytes(6).toString('hex')}`;
     const parent = CGROUP_PARENT ? ['--cgroup-parent', CGROUP_PARENT] : [];
-    const child = spawn('docker', ['run', '--name', name, ...parent, ...SANDBOX, IMAGES[lang]], {
+    // C는 컴파일한 실행 파일을 /work에서 돌리므로 그 tmpfs만 실행을 허용한다 (나머지 언어는 noexec)
+    const work = ['--tmpfs', `/work:rw,${lang === 'c' ? 'exec,' : ''}size=32m,mode=1777`];
+    const child = spawn('docker', ['run', '--name', name, ...parent, ...SANDBOX, ...work, IMAGES[lang]], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     const chunks = [];

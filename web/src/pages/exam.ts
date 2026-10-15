@@ -10,6 +10,7 @@ import { fromLevel } from '../exam/sims/tree';
 import { el } from '../view/stage';
 import { mountJava } from './java';
 import { mountPython } from './python';
+import { mountC } from './c';
 import { mountSql } from './sql';
 import { runSql } from '../sql/engine';
 import { buildSteps, show } from '../sql/steps';
@@ -29,7 +30,7 @@ function saveMark(id: string, m: Mark) {
 const catName = (c: Category) => CATEGORIES.find((x) => x.id === c)?.name ?? c;
 const LANG_NAME = { c: 'C', java: 'Java', python: 'Python' } as const;
 /** 그래픽 풀이(디버거)를 지금 쓸 수 있는 코드 문제 */
-const solvable = (p: Problem) => p.kind === 'sql' || (p.kind === 'code' && p.lang !== 'c');
+const solvable = (p: Problem) => p.kind === 'sql' || p.kind === 'code';
 
 function link(href: string, cls: string, text: string): HTMLAnchorElement {
   const a = el('a', cls, text);
@@ -151,12 +152,7 @@ function renderProblem(main: HTMLElement, p: Problem, cleanup: (() => void)[]) {
       el('h3', 'ex-explain-h', '해설'), el('p', 'ex-explain', p.explain));
     // 그래픽 풀이
     if (p.kind === 'code' || p.kind === 'sql') {
-      if (solvable(p)) {
-        const go = link(`/exam/${p.id}/solve`, 'button primary', '▶ 그래픽으로 풀이 보기 (한 줄씩 실행)');
-        result.append(go);
-      } else {
-        result.append(el('p', 'muted small', `${LANG_NAME[(p as { lang: 'c' | 'python' }).lang]} 그래픽 풀이는 실행기 개발 중입니다. 곧 이 자리에서 한 줄씩 따라갈 수 있습니다.`));
-      }
+      result.append(link(`/exam/${p.id}/solve`, 'button primary', '▶ 그래픽으로 풀이 보기 (한 줄씩 실행)'));
     } else if (!simBox.childElementCount) {
       const sim = simulator(p);
       if (sim) {
@@ -289,6 +285,7 @@ function mountSolve(root: HTMLElement, p: Problem): () => void {
   root.classList.add('exam-solve');
   if (p.kind === 'sql') return mountSql(root, { setup: p.setup, query: p.query, header: bar });
   if (p.kind === 'code' && p.lang === 'python') return mountPython(root, { code: p.code, header: bar });
+  if (p.kind === 'code' && p.lang === 'c') return mountC(root, { code: p.code, header: bar });
   if (p.kind === 'code') return mountJava(root, { code: p.code, header: bar });
   return () => {};
 }

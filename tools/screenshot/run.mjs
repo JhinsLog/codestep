@@ -46,7 +46,7 @@ for (const sc of plan) {
   if (sc.view) await page.evaluate((v) => localStorage.setItem('codestep.view', v), sc.view), await page.reload();
   if (sc.code !== undefined) {
     // 예제가 아닌 코드: 편집기 저장소에 넣고 다시 열어 실행한다 (trace는 traces/index.json에 같은 코드로 기록해 둔다)
-    await page.evaluate((c) => localStorage.setItem('codestep.java.code', c), sc.code);
+    await page.evaluate(([k, c]) => localStorage.setItem(k, c), [sc.codeKey ?? 'codestep.java.code', sc.code]);
     await page.reload();
     await page.click('[data-id=run]');
     await page.waitForSelector('[data-id=edit]:not([hidden])', { timeout: 15000 });

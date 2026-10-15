@@ -19,6 +19,10 @@
 | `web/src/view/stage3d.ts` | 3D 무대 (three.js): 호출 스택 탑, 힙 객체, 참조 화살표, 값이 옮겨 가는 움직임 |
 | `web/src/view/three/flow.ts` | 값의 출처 추정 — 방금 실행한 줄을 보고 "t = x[j]"면 x[j] 칸에서 t로 날린다 |
 | `runners/java/` | Java 실행기: JDI로 줄 단위 추적, 격리 컨테이너 이미지 |
+| `runners/python/` | Python 실행기: sys.settrace로 줄 단위 추적 |
+| `runners/c/` | C 실행기: gcc로 컴파일, gdb로 모든 줄에 중단점을 걸어 추적. 포인터를 주소·배열 칸·변수로 풀고 malloc/free를 기록 |
+| `web/src/exam/` | 정보처리기사 모드: 문제, 채점, 이론 시뮬레이터(페이지 교체·스케줄링·트리·서브넷) |
+| `tools/exam-check/` | 정보처리기사 코드 문제의 정답을 실제 실행 결과와 대조 |
 | `spikes/sqlite-vdbe/` | 계측한 SQLite 엔진. 실행 루프(VDBE)의 opcode를 행 단위로 기록 (브라우저 WASM) |
 | `server/static.mjs` | `web/dist` 서빙 + `/api/`를 실행 API로 전달 (127.0.0.1:5180) |
 | `server/api.mjs` | 실행 API: 대기열·요청 제한·Access JWT 검증 뒤 컨테이너 실행 (127.0.0.1:5181) |
@@ -30,7 +34,7 @@
 | 언어 | 실행 위치 |
 |---|---|
 | SQL | 방문자 브라우저 (SQLite WASM) |
-| Python | 방문자 브라우저 (Pyodide, 예정) |
+| Python | 서버의 격리 컨테이너 (sys.settrace) |
 | Java, C | 서버의 격리 컨테이너 — 네트워크 차단, 읽기 전용 루트, 권한 제거, 비root, CPU·메모리·프로세스 수·시간 제한 |
 
 C·Java 실행 API는 격리와 요청 제한을 검증하기 전까지 Cloudflare Access로 잠가 둔다.

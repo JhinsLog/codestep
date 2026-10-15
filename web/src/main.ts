@@ -5,6 +5,7 @@ import { mountJava } from './pages/java';
 import { mountSql } from './pages/sql';
 import { mountExam } from './pages/exam';
 import { mountPython } from './pages/python';
+import { mountC } from './pages/c';
 
 type Mount = (root: HTMLElement, path: string) => () => void;
 
@@ -13,6 +14,7 @@ const ROUTES: Record<string, { mount: Mount; title: string; prefix?: boolean }> 
   '/': { mount: mountHome, title: '' },
   '/exam': { mount: mountExam, title: '정보처리기사', prefix: true },
   '/java': { mount: (r) => mountJava(r), title: 'Java' },
+  '/c': { mount: (r) => mountC(r), title: 'C' },
   '/python': { mount: (r) => mountPython(r), title: 'Python' },
   '/sql': { mount: (r) => mountSql(r), title: 'SQL' },
 };

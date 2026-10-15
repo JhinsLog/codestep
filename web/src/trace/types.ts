@@ -7,11 +7,13 @@
 
 export type Value =
   | { t: 'num'; v: number | null; text?: string; float?: boolean } // text: JSON으로 정확히 못 옮기는 수
-  | { t: 'str'; v: string }
+  | { t: 'str'; v: string; addr?: string }   // addr: C 문자열 상수의 주소
   | { t: 'bool'; v: boolean }
   | { t: 'char'; v: string }
   | { t: 'null' }
-  | { t: 'ref'; id: string }    // heap의 객체를 가리킨다
+  // heap의 객체를 가리킨다. C 포인터는 실제 주소(addr)와, 배열이면 몇 번째 칸(idx)인지도 담는다.
+  // id가 '@var:프레임번호:이름'이면 그 프레임의 변수(스칼라)를 가리킨다 (C의 &x)
+  | { t: 'ref'; id: string; idx?: number | null; addr?: string }
   | { t: 'unknown'; text: string };
 
 export interface Var {
@@ -22,11 +24,18 @@ export interface Var {
 
 export type SeqKind = 'array' | 'list' | 'stack' | 'deque' | 'set';
 
-export type HeapObj =
+/** C처럼 메모리가 드러나는 언어에서만 채운다: 시작 주소, 놓인 영역, 원소 크기(바이트) */
+export interface Placement {
+  addr?: string;
+  region?: 'stack' | 'heap' | 'static';
+  elem?: number;
+}
+
+export type HeapObj = Placement & (
   | { kind: SeqKind; type: string; len: number; items: Value[] } // items는 앞에서부터 잘릴 수 있다
   | { kind: 'map'; type: string; len: number; entries: [Value, Value][] }
   | { kind: 'object'; type: string; fields: Var[] }
-  | { kind: 'opaque'; type: string };                              // 내부를 펼치지 않는 라이브러리 객체
+  | { kind: 'opaque'; type: string });                             // 내부를 펼치지 않는 라이브러리 객체
 
 export interface Frame {
   fn: string;

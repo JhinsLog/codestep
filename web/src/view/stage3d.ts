@@ -16,7 +16,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Frame, HeapObj, Step, Value, Var } from '../trace/types';
-import { el, fnLabel, showValue, type RenderCtx, type StageView } from './stage';
+import { el, fnLabel, shortAddr, showValue, type RenderCtx, type StageView } from './stage';
 import { face, label, release, setAnisotropy, MONO, type Run, type Tex } from './three/text';
 import { isDark, onTheme } from '../theme';
 import { snapshots, type Snapshot } from './three/history';
@@ -85,12 +85,19 @@ const boxColors = (p: Palette, v: Value): [number, string] =>
           : v.t === 'null' ? p.box.null : p.box.other;
 
 // 참조는 객체 번호(#43)로 적는다. 자바는 실제 메모리 주소를 보여 주지 않으므로 JVM이 객체마다 붙인 고유 번호를 쓴다
-const faceText = (v: Value): string => (v.t === 'ref' ? `#${v.id}` : showValue(v));
+const faceText = (v: Value): string =>
+  v.t === 'ref' ? (v.addr ? shortAddr(v.addr) : `#${v.id}`) : showValue(v);
+
+/** 참조가 가리키는 도착점 키: 배열의 특정 칸이면 'id[칸]' */
+const refTarget = (v: Value & { t: 'ref' }): string => (v.idx !== undefined && v.idx !== null ? `${v.id}[${v.idx}]` : v.id);
 
 /** 마우스 설명용 값 표기. 참조는 "참조값 #43 → 힙의 int[]" */
 function say(v: Value, heap: Record<string, HeapObj>): string {
-  if (v.t !== 'ref') return showValue(v, heap);
+  if (v.t !== 'ref') return v.t === 'str' && v.addr ? `${showValue(v, heap)} (문자열 상수, 주소 ${v.addr})` : showValue(v, heap);
+  if (v.id.startsWith('@var:')) return `포인터 ${v.addr ?? ''} → 변수 ${v.id.split(':')[2]}의 주소`;
   const o = heap[v.id];
+  const at = v.idx !== undefined && v.idx !== null ? `[${v.idx}] 칸` : '';
+  if (v.addr) return `포인터 ${v.addr} → ${o ? `${shortType(o.type)}${at}` : '?'}${o?.region === 'heap' ? ' (malloc 메모리)' : ''}`;
   return `참조값 #${v.id} → 힙의 ${o ? shortType(o.type) : '객체'}`;
 }
 const shortType = (t: string) => t.replace(/\b[\w$]+\./g, '');
@@ -580,7 +587,10 @@ export class Stage3D implements StageView {
   private readonly arrows = new Map<string, Arrow>();
   private flights: Flight[] = [];
   private refs: { key: string; from: string; to: string }[] = [];
-  private readonly anchors = new Map<string, Vector3>();   // 객체 id → 화살표 도착점
+  // 화살표 도착점: 객체 id, 배열 칸('id[3]'), 변수('@var:프레임:이름') → 위치와 따라 움직일 요소
+  private readonly anchors = new Map<string, { pos: Vector3; item: string }>();
+  private inlined = new Set<string>();       // 함수 판 위에 그린 객체 (C의 스택 배열·구조체)
+  private inlinedPrev = new Set<string>();
 
   private gen = 0;
   private shown: number | null = null;
@@ -589,6 +599,7 @@ export class Stage3D implements StageView {
   private stackW = 4;
   private heapFront: number | null = null;
   private heapMaxX = 0;
+  private lang: RenderCtx['lang'] = 'java';
   private histCache: { steps: Step[]; all: Map<string, Snapshot[]> } | null = null;
   private histNow = new Map<string, Snapshot[]>();   // 지금 단계까지의 회차 기록 (객체 id → 줄들)   // 힙 객체들의 맨 앞 z (구역 이름 자리)
   private tempo = 800;
@@ -708,6 +719,7 @@ export class Stage3D implements StageView {
   render(raw: Step, _prev: Step | undefined, ctx: RenderCtx) {
     this.ui.msg.hidden = true;
     this.lastStep = { step: raw, ctx };
+    this.lang = ctx.lang ?? 'java';
     const step = tidy(raw);
     const gen = ++this.gen;
     const from = this.shown;
@@ -745,6 +757,9 @@ export class Stage3D implements StageView {
       if (upto.length >= 2 && step.heap[id]) this.histNow.set(id, upto);
     }
 
+    this.anchors.clear();
+    this.inlinedPrev = this.inlined;
+    this.inlined = new Set();
     this.layoutStack(L, step, fromStep);
     this.layoutHeap(L, step, owners, fromStep);
     this.layoutReturn(L, step);
@@ -777,14 +792,15 @@ export class Stage3D implements StageView {
     for (const it of [...this.items.values()]) {
       if (it.gen === gen || it.dying) continue;
       const m = /^H([^/#~]+)/.exec(it.key);
-      const gone = !!m && forward && step.frames.length > 0 && !(m[1]! in step.heap);
+      const gone = !!m && forward && step.frames.length > 0 && !(m[1]! in step.heap) && !this.inlinedPrev.has(m[1]!);
       if (gone && it instanceof Slab && !it.key.includes('/')) garbage.set(m![1]!, it.target.clone());
       this.retire(it, animate, gone);
     }
     for (const [id, pos] of garbage) {
       const key = `gc:${id}:${gen}`;
       const lb = this.label(gen, key, pos.add(new Vector3(0, 1.5, 0)), new Vector3(0, -0.4, 0));
-      lb.set([{ text: `#${id} 참조 없음 → GC 대상`, color: '#ffffff', size: 38, weight: 700 }], 0.42, 0.5, 0, '#b42318');
+      const msg = ctx.lang === 'c' ? `#${id} free로 해제되었거나 가리키는 포인터가 없음` : `#${id} 참조 없음 → GC 대상`;
+      lb.set([{ text: msg, color: '#ffffff', size: 38, weight: 700 }], 0.42, 0.5, 0, '#b42318');
       lb.ttl = 1.8;
     }
 
@@ -840,28 +856,45 @@ export class Stage3D implements StageView {
         return;
       }
 
+      // 변수마다 차지하는 폭: 스칼라·참조는 상자 하나, C의 스택 배열·구조체는 판 위에 펼친 크기
+      const parts = f.locals.map((v) => {
+        const o = inlineOf(v.value, step.heap);
+        if (!o) return { v, o: null, w: VAR_PITCH, rows: 1 };
+        const [w, rows] = inlineSize(o, step.heap);
+        return { v, o, w: w + 0.45, rows };
+      });
+      const rows = Math.max(1, ...parts.map((x) => x.rows));
+      const depth = Math.max(2.1, rows * ROW_D + 0.6);
       const level = i - folded;
       const zc = -level * 0.35;
-      const w = Math.max(3.4, f.locals.length * VAR_PITCH + 0.7);
+      const w = Math.max(3.4, parts.reduce((a, x) => a + x.w, 0) + 0.8);
       widest = Math.max(widest, w);
       const slab = this.slab(L.gen, fk, new Vector3(w / 2, y + SLAB_H / 2, zc), birthLift);
       const exc = isTop && step.event === 'exception';
-      slab.shape(w, SLAB_H, 2.1, exc ? p.slabExc : isTop ? p.slabTop : p.slab);
+      slab.shape(w, SLAB_H, depth, exc ? p.slabExc : isTop ? p.slabTop : p.slab);
       slab.glow(false, 0);
       slab.info = `${f.cls ? `${shortType(f.cls)}.` : ''}${fnLabel(f.fn)} · ${f.line}줄 · 지역 변수 ${f.locals.length}개`;
       this.label(L.gen, `${fk}#h`, new Vector3(-0.3, y + 0.55, zc + 0.6), birthLift).set([
         { text: `${fnLabel(f.fn)}`, color: isTop ? p.accent : p.text, size: 46, weight: 700, mono: true },
-        { text: `  ${f.line}줄`, color: p.muted, size: 34, weight: 500 },
+        ...(f.line ? [{ text: `  ${f.line}줄`, color: p.muted, size: 34, weight: 500 }] : []),
       ], 0.46, 1, 0.5);
 
       const before = fromStep ? findFrame(fromStep.frames, frames, i) : undefined;
-      f.locals.forEach((v, j) => {
-        const pos = new Vector3(0.35 + C / 2 + j * VAR_PITCH + 0.1, y + SLAB_H + C / 2 + 0.02, zc + 0.15);
+      const cy = y + SLAB_H + C / 2 + 0.02;
+      const z0 = zc - depth / 2 + 0.85;    // 첫 줄 위치 (스칼라 상자도 이 줄)
+      let x = 0.45;
+      for (const { v, o, w: pw } of parts) {
+        if (o && v.value.t === 'ref') {
+          this.placeInline(L, v, v.value.id, o, x, cy, z0, birthLift, !existed, f.locals);
+          x += pw;
+          continue;
+        }
+        const pos = new Vector3(x + C / 2 + 0.1, cy, rows > 1 ? z0 : zc + 0.15);
         const b = this.vbox(L, `${fk}/${v.name}`, v.value, pos, birthLift, {
-          dest: { kind: 'var', name: v.name, frame: fk, isNew: !before?.locals.some((x) => x.name === v.name) },
+          dest: { kind: 'var', name: v.name, frame: fk, isNew: !before?.locals.some((xx) => xx.name === v.name) },
           parentNew: !existed,
           frameIndex: i,
-          paramIndex: v.name === 'this' ? -1 : f.locals.filter((x) => x.name !== 'this').indexOf(v),
+          paramIndex: v.name === 'this' ? -1 : f.locals.filter((xx) => xx.name !== 'this').indexOf(v),
         });
         b.src = { kind: 'var', name: v.name, frame: fk };
         b.info = `${v.type} ${v.name} = ${say(v.value, step.heap)}`;
@@ -869,12 +902,109 @@ export class Stage3D implements StageView {
           { text: v.name, color: p.text, size: 44, weight: 700, mono: true },
           { text: ` ${shortType(v.type)}`, color: p.muted, size: 32, weight: 500, mono: true },
         ]);
-        if (v.value.t === 'ref') this.refs.push({ key: `${fk}/${v.name}`, from: b.key, to: v.value.id });
-      });
-      y += LEVEL;
+        if (v.value.t === 'ref') this.refs.push({ key: `${fk}/${v.name}`, from: b.key, to: refTarget(v.value) });
+        this.anchors.set(`@var:${i}:${v.name}`, { pos: pos.clone().add(new Vector3(0, C / 2, 0)), item: b.key });
+        x += pw;
+      }
+      y += LEVEL + (rows > 1 ? 0.2 : 0);
     });
     this.stackW = Math.max(this.stackW, widest);
   }
+
+  /**
+   * C: 함수 안의 배열·구조체를 그 함수 판 위에 칸으로 펼친다 (스택 메모리 안에 있다는 것이 보이게).
+   * 칸의 키는 힙 객체와 같은 모양(H{id}/{i})이라 포인터 화살표·값 흐름·인덱스 깃발이 그대로 동작한다.
+   */
+  private placeInline(L: Layout, v: Var, id: string, o: HeapObj, x0: number, cy: number, z0: number,
+    birth: Vector3 | null, parentNew: boolean, locals: Var[]) {
+    const p = this.pal;
+    const heap = L.step.heap;
+    this.inlined.add(id);
+    const label = (key: string, pos: Vector3, text: string, addr?: string) =>
+      this.label(L.gen, key, pos, birth).set([
+        { text, color: p.text, size: 42, weight: 700, mono: true },
+        ...(addr ? [{ text: `  ${shortAddr(addr)}`, color: p.muted, size: 30, weight: 500, mono: true }] : []),
+      ], 0.38, 0, 0);
+    const cell = (oid: string, i: number, val: Value, pos: Vector3, info: string) => {
+      const b = this.vbox(L, `H${oid}/${i}`, val, pos, birth, {
+        dest: { kind: 'cell', name: '', holder: oid, idx: i, isNew: false }, parentNew, frameIndex: -1, paramIndex: -1,
+      });
+      b.src = { kind: 'cell', name: '', holder: oid, idx: i };
+      b.info = info;
+      b.name(null);
+      this.anchors.set(`${oid}[${i}]`, { pos: pos.clone().add(new Vector3(0, C / 2, 0)), item: b.key });
+      if (val.t === 'ref') this.refs.push({ key: b.key, from: b.key, to: refTarget(val) });
+      return b;
+    };
+    const field = (oid: string, fv: Var, pos: Vector3, owner: string, small: boolean) => {
+      const b = this.vbox(L, `H${oid}/.${fv.name}`, fv.value, pos, birth, {
+        dest: { kind: 'field', name: fv.name, holder: oid, isNew: false }, parentNew, frameIndex: -1, paramIndex: -1,
+      });
+      b.src = { kind: 'field', name: fv.name, holder: oid };
+      b.info = `${fv.type} ${owner}.${fv.name} = ${say(fv.value, heap)}`;
+      b.name([{ text: fv.name, color: p.text, size: small ? 36 : 42, weight: 700, mono: true }]);
+      if (fv.value.t === 'ref') this.refs.push({ key: b.key, from: b.key, to: refTarget(fv.value) });
+      return b;
+    };
+    const idxLabel = (key: string, pos: Vector3, text: string) =>
+      this.label(L.gen, key, pos.clone().add(new Vector3(0, -C / 2 + 0.02, C / 2 + 0.3)), birth)
+        .set([{ text, color: p.muted, size: 34, mono: true }], 0.28, 0.5, 0.5);
+
+    label(`H${id}#n`, new Vector3(x0, cy + C / 2 + 0.25, z0 - 0.15), `${v.name} ${shortType(o.type)}`, o.addr);
+    const firstKey = o.kind === 'object' ? `H${id}/.${o.fields[0]?.name ?? ''}` : `H${id}/0`;
+
+    if (o.kind === 'object') {
+      o.fields.forEach((fv, k) => field(id, fv, new Vector3(x0 + C / 2 + k * VAR_PITCH, cy, z0 + 0.15), v.name, false));
+    } else if (o.kind === 'array') {
+      const n = Math.min(o.items.length, MAX_CELLS);
+      const subs = o.items.slice(0, n).map((it) => inlineOf(it, heap));
+      if (n && subs.every((x) => x?.kind === 'array')) {
+        // 2차원 배열: 줄마다 한 행
+        subs.forEach((row, r) => {
+          const rid = (o.items[r] as { id: string }).id;
+          this.inlined.add(rid);
+          const rr = row as HeapObj & { items: Value[] };
+          this.anchors.set(rid, { pos: new Vector3(x0 + PITCH / 2, cy + C / 2, z0 + r * ROW_D), item: `H${rid}/0` });
+          rr.items.slice(0, ROW_CELLS).forEach((val, c) => {
+            const pos = new Vector3(x0 + c * PITCH + PITCH / 2, cy, z0 + r * ROW_D);
+            cell(rid, c, val, pos, `${v.name}[${r}][${c}] = ${say(val, heap)}`);
+            idxLabel(`H${rid}/${c}#i`, pos, `[${r}][${c}]`);
+          });
+        });
+      } else if (n && subs.every((x) => x?.kind === 'object')) {
+        // 구조체 배열: 칸마다 필드 묶음
+        const nf = Math.max(...subs.map((x) => (x as HeapObj & { fields: Var[] }).fields.length));
+        const gw = nf * 0.98 + 0.35;
+        subs.forEach((el2, k) => {
+          const eid = (o.items[k] as { id: string }).id;
+          this.inlined.add(eid);
+          const gx = x0 + (k % 4) * gw;
+          const gz = z0 + Math.floor(k / 4) * ROW_D;
+          (el2 as HeapObj & { fields: Var[] }).fields.forEach((fv, j) => {
+            field(eid, fv, new Vector3(gx + C / 2 + j * 0.98, cy, gz), `${v.name}[${k}]`, true);
+          });
+          this.anchors.set(eid, { pos: new Vector3(gx + C / 2, cy + C / 2, gz), item: `H${eid}/.${(el2 as HeapObj & { fields: Var[] }).fields[0]?.name ?? ''}` });
+          this.anchors.set(`${id}[${k}]`, { pos: new Vector3(gx + C / 2, cy + C / 2, gz), item: `H${eid}/.${(el2 as HeapObj & { fields: Var[] }).fields[0]?.name ?? ''}` });
+          this.label(L.gen, `H${eid}#k`, new Vector3(gx + 0.1, SLAB_H + 0.1 + (cy - C / 2 - SLAB_H), gz + C / 2 + 0.3), birth)
+            .set([{ text: `[${k}]`, color: p.muted, size: 34, mono: true }], 0.28, 0, 0.5);
+        });
+      } else {
+        const posOf = (i: number) => new Vector3(x0 + (i % ROW_CELLS) * PITCH + PITCH / 2, cy, z0 + Math.floor(i / ROW_CELLS) * ROW_D);
+        for (let i = 0; i < n; i++) {
+          const val = o.items[i]!;
+          const pos = posOf(i);
+          cell(id, i, val, pos, `${v.name}[${i}] = ${say(val, heap)}${o.addr && o.elem ? `  (주소 ${addrPlus(o.addr, i * o.elem)})` : ''}`);
+          idxLabel(`H${id}/${i}#i`, pos, String(i));
+        }
+        if (o.len > n) {
+          this.label(L.gen, `H${id}#more`, posOf(n), birth).set([{ text: `… +${o.len - n}`, color: p.muted, size: 38, mono: true }], 0.34);
+        }
+        this.markers(L, id, o.items.length, n, locals, posOf);
+      }
+    }
+    this.anchors.set(id, { pos: new Vector3(x0 + PITCH / 2, cy + C / 2, z0), item: firstKey });
+  }
+
 
   // ── 배치: 반환값 ────────────────────────────────────
 
@@ -895,20 +1025,19 @@ export class Stage3D implements StageView {
     b.name([{ text: '반환값', color: this.pal.gold, size: 40, weight: 700 }]);
     b.mesh.material.emissive.setHex(this.pal.ret);
     b.mesh.material.emissiveIntensity = 0.35;
-    if (step.ret.t === 'ref') this.refs.push({ key: 'ret', from: 'ret', to: step.ret.id });
+    if (step.ret.t === 'ref') this.refs.push({ key: 'ret', from: 'ret', to: refTarget(step.ret) });
   }
 
   // ── 배치: 힙 ────────────────────────────────────────
 
   private layoutHeap(L: Layout, step: Step, owners: Map<string, string[]>, fromStep: Step | undefined) {
     // 참조를 따라간 순서로 놓는다: 연결 리스트는 head → next → next 가 한 줄로 이어진다
-    const ids = reachOrder(step, (a, b) => this.heapSeq.get(a)! - this.heapSeq.get(b)!);
+    const ids = reachOrder(step, (a, b) => this.heapSeq.get(a)! - this.heapSeq.get(b)!).filter((id) => !this.inlined.has(id));
     const { x0, z0, rowW } = this.heapOrigin();
     let x = x0;
     let z = z0;
     let rowD = 0;
     this.heapMaxX = x0 + 6;
-    this.anchors.clear();
     const inner = step.frames.at(-1)?.locals ?? [];
     for (const id of ids) {
       const o = step.heap[id]!;
@@ -941,9 +1070,9 @@ export class Stage3D implements StageView {
     slab.heapId = id;
     slab.info = `${o.type} · ${KIND[o.kind]}${'len' in o ? ` · 크기 ${o.len}` : ''}${names.length ? ` · ${names.join(', ')}이(가) 가리킴` : ''}`;
     // 화살표 도착점: 넓은 배치는 왼쪽 가장자리, 좁은 배치(스택이 뒤)는 뒤쪽 가장자리
-    this.anchors.set(id, this.wide()
+    this.anchors.set(id, { item: hk, pos: this.wide()
       ? new Vector3(x0 + 0.12, SLAB_H + 0.05, z0 + Math.min(d / 2, 0.9))
-      : new Vector3(x0 + Math.min(w / 2, 0.75), SLAB_H + 0.05, z0 + 0.1));
+      : new Vector3(x0 + Math.min(w / 2, 0.75), SLAB_H + 0.05, z0 + 0.1) });
 
     // 앞쪽 바닥의 이름판
     this.floorText(L.gen, `${hk}#n`, new Vector3(x0, 0, z0 + d + 0.42), birth).set([
@@ -972,9 +1101,10 @@ export class Stage3D implements StageView {
             cellOpts(i, !old || i >= old.length));
           b.src = { kind: 'cell', name: '', holder: id, idx: i };
           b.showTop(!tower && n > ROW_CELLS);
+          this.anchors.set(`${id}[${i}]`, { pos: pos.clone().add(new Vector3(0, C / 2, 0)), item: b.key });
           b.info = `${names[0] ?? shortType(o.type)}[${i}] = ${say(v, heap)}`;
           b.name(null);
-          if (v.t === 'ref') this.refs.push({ key: `${hk}/${i}`, from: b.key, to: v.id });
+          if (v.t === 'ref') this.refs.push({ key: `${hk}/${i}`, from: b.key, to: refTarget(v) });
           if (!tower && o.kind !== 'set') {
             this.label(L.gen, `${hk}/${i}#i`, pos.clone().add(new Vector3(0, -C / 2 + 0.02, C / 2 + 0.3)), birth)
               .set([{ text: String(i), color: p.muted, size: 34, mono: true }], 0.28, 0.5, 0.5);
@@ -1024,8 +1154,8 @@ export class Stage3D implements StageView {
           vb.name(null);
           this.label(L.gen, `${hk}/a:${kt}`, new Vector3(x0 + 0.3 + C + 0.6, SLAB_H + C / 2, zr), birth)
             .set([{ text: '→', color: p.muted, size: 48, weight: 700 }], 0.4);
-          if (k.t === 'ref') this.refs.push({ key: kb.key, from: kb.key, to: k.id });
-          if (v.t === 'ref') this.refs.push({ key: vb.key, from: vb.key, to: v.id });
+          if (k.t === 'ref') this.refs.push({ key: kb.key, from: kb.key, to: refTarget(k) });
+          if (v.t === 'ref') this.refs.push({ key: vb.key, from: vb.key, to: refTarget(v) });
         }
         if (o.len > n) {
           this.label(L.gen, `${hk}#more`, new Vector3(x0 + w / 2, SLAB_H + 0.3, z0 + d - 0.3), birth)
@@ -1050,7 +1180,7 @@ export class Stage3D implements StageView {
             { text: f.name, color: p.text, size: 42, weight: 700, mono: true },
             { text: ` ${shortType(f.type)}`, color: p.muted, size: 30, weight: 500, mono: true },
           ]);
-          if (f.value.t === 'ref') this.refs.push({ key: b.key, from: b.key, to: f.value.id });
+          if (f.value.t === 'ref') this.refs.push({ key: b.key, from: b.key, to: refTarget(f.value) });
         });
         break;
       }
@@ -1346,9 +1476,10 @@ export class Stage3D implements StageView {
     let growing = false;
     for (const a of this.arrows.values()) {
       const fromItem = this.items.get(a.fromKey);
-      const anchor = this.anchors.get(a.to);
-      const target = this.items.get(`H${a.to}`);
-      if (!fromItem || !anchor || !target) { a.group.visible = false; continue; }
+      const anc = this.anchors.get(a.to);
+      const target = anc ? this.items.get(anc.item) : undefined;
+      if (!fromItem || !anc || !target) { a.group.visible = false; continue; }
+      const anchor = anc.pos;
       a.group.visible = true;
       if (a.grow < 1) { a.grow = Math.min(1, a.grow + dt * 2.6); growing = true; }
       const from = fromItem.group.position.clone().add(new Vector3(0, C / 2 * fromItem.group.scale.x, 0));
@@ -1400,7 +1531,7 @@ export class Stage3D implements StageView {
     this.floorText(g, 'zone:stack', new Vector3(sx0 + 0.3, 0, 1.75), null)
       .set([{ text: '호출 스택', color: p.text, size: 52, weight: 700 }, { text: '  Stack', color: p.muted, size: 40, weight: 600 }], 0.56, 0);
     this.floorText(g, 'zone:stack:d', new Vector3(sx0 + 0.3, 0, 2.45), null)
-      .set([{ text: '함수를 부르면 판이 쌓이고, 끝나면 사라집니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
+      .set([{ text: this.lang === 'c' ? '함수를 부르면 판이 쌓이고 지역 변수·배열이 그 안에 생긴다. 끝나면 사라진다' : '함수를 부르면 판이 쌓이고, 끝나면 사라집니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
     // 힙 영역
     const hz0 = this.wide() ? h.z0 - 2.6 : h.z0 - 0.7;
     const front = this.heapFront ?? h.z0 + 1.5;
@@ -1413,7 +1544,7 @@ export class Stage3D implements StageView {
       ...(this.heapFront === null ? [{ text: '  — 아직 객체 없음', color: p.muted, size: 40, weight: 500 }] : []),
     ], 0.56, 0);
     this.floorText(g, 'zone:heap:d', new Vector3(h.x0 - 0.3, 0, front + 0.7), null)
-      .set([{ text: 'new로 만든 객체. 참조가 없어지면 GC가 치웁니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
+      .set([{ text: this.lang === 'c' ? 'malloc으로 받은 메모리. 다 쓰면 free로 돌려준다 (안 하면 메모리 누수)' : 'new로 만든 객체. 참조가 없어지면 GC가 치웁니다', color: p.muted, size: 34, weight: 500 }], 0.34, 0);
   }
 
   // ── 배치: 화면 출력판 ───────────────────────────────
@@ -1748,6 +1879,36 @@ interface Layout {
 const KIND: Record<HeapObj['kind'], string> = {
   array: '배열', list: '리스트', stack: '스택', deque: '덱', set: '집합', map: '맵', object: '객체', opaque: '객체',
 };
+
+/** C: 판 위에 펼칠 객체인가 (스택·전역에 있는 배열·구조체를 그 변수가 직접 담고 있다) */
+function inlineOf(v: Value, heap: Record<string, HeapObj>): HeapObj | null {
+  if (v.t !== 'ref' || v.addr || v.id.startsWith('@')) return null;
+  const o = heap[v.id];
+  if (!o || (o.region !== 'stack' && o.region !== 'static')) return null;
+  return o.kind === 'array' || o.kind === 'object' ? o : null;
+}
+
+/** 판 위에 펼쳤을 때의 크기 [너비, 줄 수] */
+function inlineSize(o: HeapObj, heap: Record<string, HeapObj>): [number, number] {
+  if (o.kind === 'object') return [Math.max(1, o.fields.length) * VAR_PITCH, 1];
+  if (o.kind !== 'array') return [VAR_PITCH, 1];
+  const n = Math.min(o.items.length, MAX_CELLS);
+  const subs = o.items.slice(0, n).map((it) => inlineOf(it, heap));
+  if (n && subs.every((x) => x?.kind === 'array')) {
+    const cols = Math.max(...subs.map((x) => Math.min((x as HeapObj & { items: Value[] }).items.length, ROW_CELLS)));
+    return [cols * PITCH, n];
+  }
+  if (n && subs.every((x) => x?.kind === 'object')) {
+    const nf = Math.max(...subs.map((x) => (x as HeapObj & { fields: Var[] }).fields.length));
+    return [Math.min(n, 4) * (nf * 0.98 + 0.35), Math.ceil(n / 4)];
+  }
+  return [Math.max(1, Math.min(n, ROW_CELLS)) * PITCH, Math.max(1, Math.ceil(n / ROW_CELLS))];
+}
+
+/** 0x1000 + 8 → 0x1008 */
+function addrPlus(addr: string, off: number): string {
+  try { return `0x${(BigInt(addr) + BigInt(off)).toString(16)}`; } catch { return addr; }
+}
 
 /** 프레임 변수(바깥 → 안)에서 출발해 참조를 깊이 우선으로 따라간 객체 순서. 닿지 않는 객체는 뒤에 */
 function reachOrder(step: Step, rest: (a: string, b: string) => number): string[] {

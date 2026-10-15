@@ -29,7 +29,11 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /** 프레임 이름 표시: 함수는 f(), Python 전역처럼 <module>은 그대로 */
-export const fnLabel = (fn: string): string => (fn.startsWith('<') ? fn : `${fn}()`);
+export const fnLabel = (fn: string): string =>
+  fn === '<global>' ? '전역 변수 (데이터 영역)' : fn.startsWith('<') ? fn : `${fn}()`;
+
+/** C 포인터 주소 줄임: 0x7ffd5a3c1bb5 → 0x…1bb5 */
+export const shortAddr = (a: string): string => (a.length > 8 ? `0x…${a.slice(-4)}` : a);
 
 export function showValue(v: Value | undefined, heap?: Record<string, HeapObj>): string {
   if (!v) return '?';
@@ -40,8 +44,10 @@ export function showValue(v: Value | undefined, heap?: Record<string, HeapObj>):
     case 'bool': return String(v.v);
     case 'null': return 'null';
     case 'ref': {
+      if (v.id.startsWith('@var:')) return `${v.addr ? `${shortAddr(v.addr)} ` : ''}→ ${v.id.split(':')[2]}`;
       const o = heap?.[v.id];
-      return o ? `→ ${o.type}` : '→ …';
+      const at = v.idx !== undefined && v.idx !== null ? `[${v.idx}]` : '';
+      return `${v.addr ? `${shortAddr(v.addr)} ` : ''}${o ? `→ ${o.type}${at}` : '→ …'}`;
     }
     case 'unknown': return v.text;
   }
