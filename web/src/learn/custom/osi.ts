@@ -22,17 +22,21 @@ const TCPIP = [
 ];
 
 // 캡슐 조각: 데이터와 계층별 헤더 (layer: 어느 계층이 붙이는가)
+// OSI 참조 모델에서는 7~2계층이 각자 헤더를 붙인다: AH·PH·SH(응용·표현·세션), TCP(전송), IP(네트워크), MAC+FCS(데이터 링크)
 const SEG: Record<string, { label: string; w: number; layer: number }> = {
-  data: { label: 'DATA', w: 46, layer: 7 },
-  enc: { label: '🔒DATA', w: 54, layer: 6 },
-  tcp: { label: 'TCP', w: 36, layer: 4 },
-  ip: { label: 'IP', w: 30, layer: 3 },
-  mac: { label: 'MAC', w: 38, layer: 2 },
-  fcs: { label: 'FCS', w: 34, layer: 2 },
+  data: { label: 'DATA', w: 40, layer: 7 },
+  enc: { label: '🔒DATA', w: 44, layer: 6 },
+  ah: { label: 'AH', w: 24, layer: 7 },
+  ph: { label: 'PH', w: 24, layer: 6 },
+  sh: { label: 'SH', w: 24, layer: 5 },
+  tcp: { label: 'TCP', w: 32, layer: 4 },
+  ip: { label: 'IP', w: 24, layer: 3 },
+  mac: { label: 'MAC', w: 34, layer: 2 },
+  fcs: { label: 'FCS', w: 28, layer: 2 },
 };
 
 // 그림 크기: 계층 칸(이름표 + 데이터가 지나가는 통로) 7개, 칸 사이에는 캡슐이 지나가는 틈
-const W = 940, SW = 432, LW = 214, RH = 38, GAP = 14, Y0 = 30;
+const W = 940, SW = 432, LW = 190, RH = 38, GAP = 14, Y0 = 30;
 const SX = 6, RX = W - SW - 6;
 const rowY = (n: number) => Y0 + (7 - n) * (RH + GAP);
 const midY = (n: number) => rowY(n) + RH / 2;
@@ -41,7 +45,8 @@ const labelX = (side: 'L' | 'R') => (side === 'L' ? SX : RX) + LW / 2;
 const BOTTOM = rowY(1) + RH;
 const WIRE_Y = BOTTOM + 34;
 const H = WIRE_Y + 26;
-const FRAME = ['mac', 'ip', 'tcp', 'enc', 'fcs'];
+const UP = ['sh', 'ph', 'ah', 'enc'];   // 5~7계층이 만든 부분
+const FRAME = ['mac', 'ip', 'tcp', ...UP, 'fcs'];
 
 export function osiViz(): Viz {
   const { root, body } = frame('OSI 7계층과 캡슐화', 'Open Systems Interconnection Reference Model');
@@ -69,7 +74,7 @@ export function osiViz(): Viz {
         svg('text', { x: x + 10, y: y + 27, class: 'osi-num' }, String(L.n)),
         svg('text', { x: x + 30, y: y + 16, class: 'osi-ko' }, `${L.ko} 계층`),
         svg('text', { x: x + LW - 8, y: y + 16, class: 'osi-pdu', 'text-anchor': 'end' }, L.pdu),
-        svg('text', { x: x + 30, y: y + 31, class: 'osi-proto' }, protos.length > 40 ? `${protos.slice(0, 39)}…` : protos),
+        svg('text', { x: x + 30, y: y + 31, class: 'osi-proto' }, protos.length > 32 ? `${protos.slice(0, 31)}…` : protos),
       );
       g.addEventListener('click', () => void goLayer(side, L));
       g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void goLayer(side, L); } });
@@ -156,7 +161,7 @@ export function osiViz(): Viz {
   };
 
   /** 보내는 쪽: 위 계층에서 n계층으로 틈을 지나 내려오고, n계층이 붙이는 조각(add)을 단다 */
-  const down = (n: number, keys: string[], add: string[]) => async (instant: boolean) => {
+  const down = (n: number, keys: string[], add: string[], after?: () => Promise<void>) => async (instant: boolean) => {
     side = 'L';
     bits.replaceChildren(); devOn(-1);
     capWrap.setAttribute('visibility', 'visible');
@@ -168,6 +173,7 @@ export function osiViz(): Viz {
       { x: laneX('L') + segX(keys, keys.indexOf(k)) + SEG[k]!.w / 2, y: midY(n) }, instant, false)));
     drawCap(keys);
     if (!instant) for (const k of add) cap.children[keys.indexOf(k)]?.classList.add('pop');
+    if (!instant && after) await after();
   };
   /** 받는 쪽: 아래 계층에서 n계층으로 올라오고, n계층이 붙였던 조각을 떼어 이름표로 돌려보낸다 */
   const up = (n: number, keys: string[]) => async (instant: boolean) => {
@@ -182,6 +188,27 @@ export function osiViz(): Viz {
     const gone = old.filter((k) => !keys.includes(k));
     drawCap(keys);
     await Promise.all(gone.map((k) => fly(k, { x: laneX('R') + segX(old, old.indexOf(k)) + SEG[k]!.w / 2, y: midY(n) }, { x: labelX('R'), y: midY(n) }, instant, true)));
+  };
+  /** 세션 계층: 데이터 사이에 동기점(체크포인트) 깃발이 꽂힌다 */
+  const syncPoints = async () => {
+    const enc = cap.children[segs.indexOf('enc')];
+    if (!enc) return;
+    const x0 = segX(segs, segs.indexOf('enc'));
+    const w = SEG.enc!.w;
+    const flags = svg('g', { class: 'osi-sync' });
+    [0.2, 0.75].forEach((f, i) => {
+      const fx = x0 + w * f;
+      const g = svg('g');
+      g.append(svg('line', { x1: fx, y1: -11, x2: fx, y2: -24 }), svg('path', { d: `M${fx} -24 l8 3 l-8 3 z` }), svg('text', { x: fx + 9, y: -14 }, String(i + 1)));
+      g.setAttribute('opacity', '0');
+      flags.append(g);
+    });
+    const cap1 = svg('text', { x: widthOf(segs) / 2 + 6, y: 4, class: 'osi-sync-cap' }, '◀ 동기점(체크포인트)');
+    cap1.setAttribute('opacity', '0');
+    flags.append(cap1);
+    cap.append(flags);
+    const gs = [...flags.children] as SVGGElement[];
+    for (const g of gs) await tween(T(380, false), (t) => g.setAttribute('opacity', String(t))).done;
   };
   const BIT = '10110010011101';
   const wireRun = async (instant: boolean) => {
@@ -212,21 +239,21 @@ export function osiViz(): Viz {
 
   type Step = { t: string; b: string; side: 'L' | 'R' | null; n: number; run: (instant: boolean) => Promise<void> };
   const steps: Step[] = [
-    { side: 'L', n: 7, t: '7 응용 계층 — 데이터 만들기', b: '웹 브라우저가 "GET /index.html" 같은 요청 데이터를 만든다. 아직 헤더가 없는 순수한 데이터다.', run: down(7, ['data'], ['data']) },
-    { side: 'L', n: 6, t: '6 표현 계층 — 암호화·압축', b: '보내기 좋은 형식으로 바꾼다. HTTPS라면 TLS로 암호화(🔒)되고, 이미지라면 압축된다.', run: down(6, ['enc'], ['enc']) },
-    { side: 'L', n: 5, t: '5 세션 계층 — 대화 연결', b: '두 프로그램 사이의 대화(세션)를 열고 유지한다. 중간에 끊겨도 동기점부터 다시 시작할 수 있게 한다.', run: down(5, ['enc'], []) },
-    { side: 'L', n: 4, t: '4 전송 계층 — TCP 헤더가 붙는다 (캡슐화)', b: '전송 계층 이름표에서 TCP 헤더(포트 번호·순서 번호)가 날아와 앞에 붙는다. 이제 이름은 "세그먼트".', run: down(4, ['tcp', 'enc'], ['tcp']) },
-    { side: 'L', n: 3, t: '3 네트워크 계층 — IP 헤더가 붙는다', b: '출발지·목적지 IP 주소를 담은 IP 헤더가 붙는다. 이름은 "패킷". 라우터는 이 IP를 보고 길을 정한다.', run: down(3, ['ip', 'tcp', 'enc'], ['ip']) },
-    { side: 'L', n: 2, t: '2 데이터 링크 계층 — MAC 헤더와 FCS', b: '다음 장비의 MAC 주소를 담은 헤더가 앞에, 오류 검사용 FCS(CRC)가 뒤에 붙는다. 이름은 "프레임".', run: down(2, FRAME, ['mac', 'fcs']) },
-    { side: 'L', n: 1, t: '1 물리 계층 — 비트로 바꾸기', b: '프레임 전체가 0과 1의 비트가 된다. 랜카드가 비트를 전압의 높낮이(전기 신호)로 만들어 케이블에 흘려보낸다.', run: toBits },
+    { side: 'L', n: 7, t: '7 응용 계층 — 데이터와 응용 헤더(AH)', b: '웹 브라우저가 "GET /index.html" 요청 데이터를 만들고, 응용 계층 헤더(AH)를 붙인다. OSI 참조 모델에서는 7계층부터 2계층까지 각 계층이 자기 헤더를 하나씩 붙인다.', run: down(7, ['ah', 'data'], ['ah', 'data']) },
+    { side: 'L', n: 6, t: '6 표현 계층 — 암호화·압축 + 표현 헤더(PH)', b: '데이터를 보내기 좋은 형식으로 바꾼다(🔒 암호화, 압축, 코드 변환). 어떤 형식으로 바꿨는지 알리는 표현 헤더(PH)를 붙인다.', run: down(6, ['ph', 'ah', 'enc'], ['ph', 'enc']) },
+    { side: 'L', n: 5, t: '5 세션 계층 — 세션 헤더(SH)와 동기점', b: '세션 헤더(SH)를 붙인다. 대화 방식(반이중·전이중)과 동기점(체크포인트)을 정해, 큰 데이터를 보내다 끊기면 마지막 동기점부터 다시 보낼 수 있게 한다. (실제 인터넷 TCP/IP에서는 이 일을 응용 프로그램이 맡아 SH가 따로 없다)', run: down(5, ['sh', 'ph', 'ah', 'enc'], ['sh'], syncPoints) },
+    { side: 'L', n: 4, t: '4 전송 계층 — TCP 헤더가 붙는다', b: '전송 계층 이름표에서 TCP 헤더(포트 번호·순서 번호)가 날아와 앞에 붙는다. 이제 이름은 "세그먼트".', run: down(4, ['tcp', ...UP], ['tcp']) },
+    { side: 'L', n: 3, t: '3 네트워크 계층 — IP 헤더가 붙는다', b: '출발지·목적지 IP 주소를 담은 IP 헤더가 붙는다. 이름은 "패킷". 라우터는 이 IP를 보고 길을 정한다.', run: down(3, ['ip', 'tcp', ...UP], ['ip']) },
+    { side: 'L', n: 2, t: '2 데이터 링크 계층 — MAC 헤더와 FCS', b: '다음 장비의 MAC 주소를 담은 헤더가 앞에, 오류 검사용 FCS(CRC)가 뒤에 붙는다(뒤에 붙는 것은 트레일러). 이름은 "프레임".', run: down(2, FRAME, ['mac', 'fcs']) },
+    { side: 'L', n: 1, t: '1 물리 계층 — 비트로 바꾸기', b: '프레임 전체가 0과 1의 비트가 된다. 물리 계층은 헤더를 붙이지 않고, 랜카드가 비트를 전압의 높낮이(전기 신호)로 만들어 케이블에 흘려보낸다.', run: toBits },
     { side: null, n: 0, t: '전송 매체 — 전기 신호가 흐른다', b: '신호가 허브(1계층: 그대로 증폭), 스위치(2계층: MAC을 보고 포트 선택), 라우터(3계층: IP를 보고 경로 선택)를 지나 목적지로 간다.', run: wireRun },
     { side: 'R', n: 1, t: '1 물리 계층 — 신호를 비트로', b: '받는 쪽 랜카드가 전기 신호를 다시 비트로 읽고, 프레임으로 모은다.', run: up(1, FRAME) },
-    { side: 'R', n: 2, t: '2 데이터 링크 계층 — MAC 헤더와 FCS를 뗀다 (역캡슐화)', b: '목적지 MAC이 내 것인지 확인하고, FCS로 오류를 검사한 뒤 MAC 헤더와 FCS를 떼어 낸다. 남은 것은 패킷.', run: up(2, ['ip', 'tcp', 'enc']) },
-    { side: 'R', n: 3, t: '3 네트워크 계층 — IP 헤더를 뗀다', b: '목적지 IP가 내 주소인지 확인하고 IP 헤더를 떼어 낸다. 남은 것은 세그먼트.', run: up(3, ['tcp', 'enc']) },
-    { side: 'R', n: 4, t: '4 전송 계층 — 포트로 프로그램 찾기', b: 'TCP 헤더의 포트 번호로 어느 프로그램(웹 서버 80/443)에 줄지 정하고, 순서를 맞춘 뒤 헤더를 뗀다.', run: up(4, ['enc']) },
-    { side: 'R', n: 5, t: '5 세션 계층', b: '열려 있는 세션(대화)에 데이터를 넘긴다.', run: up(5, ['enc']) },
-    { side: 'R', n: 6, t: '6 표현 계층 — 복호화·압축 풀기', b: '암호와 압축을 풀어 응용 프로그램이 읽을 수 있는 형식으로 되돌린다.', run: up(6, ['data']) },
-    { side: 'R', n: 7, t: '7 응용 계층 — 데이터 도착', b: '웹 서버가 "GET /index.html" 요청을 받는다. 내려갈 때 붙인 헤더를 올라오며 차례로 뗀 것이 역캡슐화다.', run: up(7, ['data']) },
+    { side: 'R', n: 2, t: '2 데이터 링크 계층 — MAC 헤더와 FCS를 뗀다 (역캡슐화)', b: '목적지 MAC이 내 것인지 확인하고, FCS로 오류를 검사한 뒤 MAC 헤더와 FCS를 떼어 낸다. 남은 것은 패킷.', run: up(2, ['ip', 'tcp', ...UP]) },
+    { side: 'R', n: 3, t: '3 네트워크 계층 — IP 헤더를 뗀다', b: '목적지 IP가 내 주소인지 확인하고 IP 헤더를 떼어 낸다. 남은 것은 세그먼트.', run: up(3, ['tcp', ...UP]) },
+    { side: 'R', n: 4, t: '4 전송 계층 — 포트로 프로그램 찾기', b: 'TCP 헤더의 포트 번호로 어느 프로그램(웹 서버 80/443)에 줄지 정하고, 순서를 맞춘 뒤 헤더를 뗀다.', run: up(4, UP) },
+    { side: 'R', n: 5, t: '5 세션 계층 — 세션 헤더(SH)를 뗀다', b: 'SH를 보고 어느 세션(대화)의 데이터인지, 어느 동기점까지 받았는지 확인한 뒤 떼어 낸다.', run: up(5, ['ph', 'ah', 'enc']) },
+    { side: 'R', n: 6, t: '6 표현 계층 — PH를 떼고 복호화', b: 'PH에 적힌 형식대로 암호와 압축을 풀어, 응용 프로그램이 읽을 수 있는 데이터로 되돌린다.', run: up(6, ['ah', 'data']) },
+    { side: 'R', n: 7, t: '7 응용 계층 — AH를 떼고 데이터 도착', b: '웹 서버가 "GET /index.html" 요청을 받는다. 내려갈 때 붙인 헤더를 올라오며 차례로 뗀 것이 역캡슐화다.', run: up(7, ['data']) },
   ];
 
   const reset = () => {

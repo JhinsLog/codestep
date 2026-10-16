@@ -331,3 +331,7 @@ button.danger { border-color: var(--error); color: var(--error); }
 @media (prefers-reduced-motion: reduce) {
   .osi-spark.on, .osi-ring rect, .ladder-bar.focus, .board-chip.focus, .board-head.focus, .fields-cell.focus, .cov-lamp.focus, .key-head.focus { animation: none; }
 }
+.osi-sync line { stroke: var(--glow); stroke-width: 1.5; }
+.osi-sync path { fill: var(--glow); }
+.osi-sync text { font-size: 9px; font-weight: 800; fill: var(--glow); }
+.osi-sync-cap { font-size: 10px; font-weight: 800; fill: var(--glow); }
