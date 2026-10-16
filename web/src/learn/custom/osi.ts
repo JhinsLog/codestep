@@ -58,7 +58,7 @@ export function osiViz(): Viz {
   tools.append(tcpBtn, el('span', 'muted small', '외우기: 아래부터 "물·데·네·전·세·표·응" / Please Do Not Throw Sausage Pizza Away'));
 
   const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'osi-svg', role: 'img', 'aria-label': 'OSI 7계층 그림' });
-  const detail = detailBox('계층을 누르면 데이터가 그 계층까지 내려가거나 올라가는 모습을 보여 주고, 역할·프로토콜·장비를 설명합니다. ▶ 재생은 처음부터 끝까지 보여 줍니다.');
+  const detail = detailBox('계층을 누르면 데이터가 그 계층까지 내려가거나 올라가는 모습을 보여 줍니다. 캡슐 조각(DATA, AH …)이나 장비를 누르면 무엇인지 예시 애니메이션 팝업으로 설명합니다.');
 
   s.append(svg('text', { x: SX + SW / 2, y: 18, class: 'osi-side' }, '보내는 쪽 (PC A) — 위에서 아래로 캡슐화'),
     svg('text', { x: RX + SW / 2, y: 18, class: 'osi-side' }, '받는 쪽 (PC B) — 아래에서 위로 역캡슐화'));
@@ -327,18 +327,16 @@ export function osiViz(): Viz {
   });
   reset();
 
-  /** 계층을 누르면: 지금 위치에서 그 계층까지 한 칸씩 진행한다 (뒤로 가는 경우는 그 단계를 다시 보여 준다) */
+  /** 계층을 누르면: 지금 위치에서 그 계층까지 한 칸씩 진행한다 (팝업은 띄우지 않고 아래 설명 칸에 안내한다) */
   async function goLayer(sd: 'L' | 'R', L: Layer) {
     const k = steps.findIndex((st) => st.side === sd && st.n === L.n);
     for (const r of rows) r.g.classList.toggle('picked', r.side === sd && r.n === L.n);
     speed = Math.abs(k - pl.at()) > 3 ? 0.55 : 1;
     await pl.jump(k);
     speed = 1;
-    // 도착하면 그 계층에서 일어나는 일을 장면 팝업으로 바로 보여 준다
-    showStepScene(k);
   }
 
-  /** k단계에서 일어나는 일을 장면 팝업으로 */
+  /** k단계에서 일어나는 일을 장면 팝업으로 (설명 칸의 🎬 단추를 눌렀을 때) */
   function showStepScene(k: number) {
     const st = steps[k]!;
     const L = OSI.find((x) => x.n === st.n);
