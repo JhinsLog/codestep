@@ -8,8 +8,12 @@ import { chromium } from 'playwright';
 const DIST = '/dist', SHOT = '/shot';
 const index = JSON.parse(readFileSync(`${SHOT}/traces/index.json`, 'utf8'));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.svg': 'image/svg+xml' };
+let askOnline = false;
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
+  // AI 질문 창 상태 흉내: /__ask?online=1 로 켜고 끈다
+  if (url.pathname === '/__ask') { askOnline = url.searchParams.get('online') === '1'; res.writeHead(204).end(); return; }
+  if (url.pathname === '/api/ask/status') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ enabled: true, online: askOnline, queue: 0 })); return; }
   if (url.pathname === '/api/run') {
     let body = '';
     req.on('data', (b) => (body += b));

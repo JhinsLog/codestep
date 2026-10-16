@@ -91,7 +91,7 @@ setInterval(() => {
     if (!job.picked && now - job.created > PICK_TIMEOUT) {
       const i = queue.indexOf(id);
       if (i >= 0) queue.splice(i, 1);
-      fail(job, online() ? 'AI가 바빠서 답하지 못했습니다. 잠시 후 다시 질문해 주세요.' : 'AI 서버(데스크탑)가 꺼져 있습니다.');
+      fail(job, online() ? 'AI가 바빠서 답하지 못했습니다. 잠시 후 다시 질문해 주세요.' : 'AI 서버가 꺼져 있습니다.');
     } else if (job.picked && now - job.touched > IDLE_TIMEOUT) fail(job, 'AI 응답이 멈췄습니다. 다시 질문해 주세요.');
   }
 }, 5000).unref();
