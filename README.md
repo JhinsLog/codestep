@@ -21,8 +21,8 @@
 | `runners/java/` | Java 실행기: JDI로 줄 단위 추적, 격리 컨테이너 이미지 |
 | `runners/python/` | Python 실행기: sys.settrace로 줄 단위 추적 |
 | `runners/c/` | C 실행기: gcc로 컴파일, gdb로 모든 줄에 중단점을 걸어 추적. 포인터를 주소·배열 칸·변수로 풀고 malloc/free를 기록 |
-| `web/src/exam/` | 정보처리기사 모드: 문제, 채점, 이론 시뮬레이터(페이지 교체·스케줄링·트리·서브넷) |
-| `tools/exam-check/` | 정보처리기사 코드 문제의 정답을 실제 실행 결과와 대조 |
+| `web/src/exam/` | 정보처리기사 모드: 유형별 연습 문제, 2020~2026년 회차 모의고사(`rounds/`, 기출 개념을 새 지문·코드로 재구성), 채점(SQL 작성은 실제 실행으로 비교), 답안 임시 저장(`store.ts`, localStorage), 이론 시뮬레이터 |
+| `tools/exam-check/` | 정보처리기사 코드·SQL 문제의 정답을 실제 실행 결과와 대조 (`check.mts r2024-`처럼 회차만 골라 돌릴 수 있다) |
 | `spikes/sqlite-vdbe/` | 계측한 SQLite 엔진. 실행 루프(VDBE)의 opcode를 행 단위로 기록 (브라우저 WASM) |
 | `server/static.mjs` | `web/dist` 서빙 + `/api/`를 실행 API로 전달 (127.0.0.1:5180) |
 | `server/api.mjs` | 실행 API: 대기열·요청 제한·Access JWT 검증 뒤 컨테이너 실행 (127.0.0.1:5181) |

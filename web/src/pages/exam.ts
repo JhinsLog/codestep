@@ -177,7 +177,9 @@ function renderSide(side: HTMLElement, current: Problem) {
   const fill = el('span');
   fill.style.width = `${(ok / list.length) * 100}%`;
   bar.append(fill);
-  side.append(link('/exam', 'exam-back', '← 정보처리기사 처음으로'), head, bar);
+  const top = el('div', 'side-head');
+  top.append(link('/exam', 'exam-back', '← 정보처리기사 처음으로'), head, bar);
+  side.append(top);
 
   // 연습 문제, 그리고 회차별로 묶는다
   const groups = new Map<string, Problem[]>();
@@ -207,7 +209,7 @@ function renderSide(side: HTMLElement, current: Problem) {
     side.append(det);
   }
   const cur = side.querySelector<HTMLElement>('.exam-item.current');
-  if (cur) side.scrollTop = cur.offsetTop - side.clientHeight / 2;
+  if (cur && cur.offsetTop > side.clientHeight - 40) side.scrollTop = cur.offsetTop - side.clientHeight / 2;
 }
 
 function renderProblem(main: HTMLElement, side: HTMLElement, p: Problem, cleanup: (() => void)[]) {

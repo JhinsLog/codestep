@@ -556,6 +556,7 @@ tr.current td { background: var(--accent-soft); font-weight: 700; }
 .exam-card .progress-bar { margin-top: 8px; }
 
 /* 한 문제씩: 묶음 목록 */
+.side-head { position: sticky; top: -12px; margin: -12px -12px 0; padding: 12px 12px 6px; border-radius: 10px 10px 0 0; background: var(--panel); z-index: 1; display: flex; flex-direction: column; gap: 6px; }
 .exam-back { font-size: 13px; color: var(--muted); text-decoration: none; }
 .exam-back:hover { color: var(--accent); }
 .exam-group summary { cursor: pointer; font-weight: 700; font-size: 13.5px; padding: 4px 2px; }
