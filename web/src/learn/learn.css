@@ -40,8 +40,8 @@ button.danger { border-color: var(--error); color: var(--error); }
 @keyframes viz-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
 /* ── OSI ── */
-.osi-svg { width: 100%; min-width: 760px; height: auto; font-family: inherit; }
-.osi-side { font-size: 14px; font-weight: 700; fill: var(--muted); text-anchor: middle; }
+.osi-svg { width: 100%; min-width: 700px; height: auto; font-family: inherit; }
+.osi-side { font-size: 12px; font-weight: 700; fill: var(--muted); text-anchor: middle; }
 .osi-l7 { --h: 350; } .osi-l6 { --h: 25; } .osi-l5 { --h: 48; } .osi-l4 { --h: 140; } .osi-l3 { --h: 200; } .osi-l2 { --h: 245; } .osi-l1 { --h: 285; }
 .osi-row { cursor: pointer; }
 .osi-box { fill: hsl(var(--h) var(--vbg-s) var(--vbg-l)); stroke: hsl(var(--h) var(--vbd-s) var(--vbd-l)); stroke-width: 1.4; transition: stroke-width 0.2s, filter 0.2s; }
@@ -49,12 +49,13 @@ button.danger { border-color: var(--error); color: var(--error); }
 .osi-row.active .osi-box { stroke-width: 3.2; filter: drop-shadow(0 0 6px hsl(var(--h) 80% 55%)); }
 .osi-row.picked .osi-box { stroke-width: 3; stroke-dasharray: 6 3; }
 .osi-ring rect { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 8 5; animation: osi-flow 0.8s linear infinite; }
-.osi-ring text { font-size: 13px; font-weight: 800; fill: var(--accent); }
-.osi-num { font: 800 24px var(--mono); fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
-.osi-ko { font-size: 15px; font-weight: 800; fill: var(--text); }
-.osi-en { font-size: 12px; font-style: italic; fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
-.osi-proto { font-size: 11px; fill: var(--muted); }
-.osi-pdu { font-size: 11px; font-weight: 700; fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
+.osi-ring text { font-size: 11px; font-weight: 800; fill: var(--accent); }
+.osi-num { font: 800 18px var(--mono); fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
+.osi-ko { font-size: 14px; font-weight: 800; fill: var(--text); }
+.osi-lane { fill: var(--panel); fill-opacity: 0.55; stroke: hsl(var(--h) var(--vbd-s) var(--vbd-l)); stroke-opacity: 0.5; stroke-dasharray: 3 3; }
+.osi-row.active .osi-lane { fill-opacity: 0.9; stroke-opacity: 1; }
+.osi-proto { font-size: 10.5px; fill: var(--muted); }
+.osi-pdu { font-size: 10px; font-weight: 700; fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
 .osi-brace { fill: none; stroke: var(--accent); stroke-width: 2; }
 .osi-tcpip-t { font-size: 11px; font-weight: 700; fill: var(--accent); text-anchor: middle; }
 .osi-wire { fill: none; stroke: var(--line); stroke-width: 6; stroke-linecap: round; }
@@ -62,22 +63,19 @@ button.danger { border-color: var(--error); color: var(--error); }
 .osi-spark.on { stroke: var(--glow); animation: osi-flow 0.5s linear infinite; }
 @keyframes osi-flow { to { stroke-dashoffset: -28; } }
 .osi-dev rect { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
-.osi-dev text { font-size: 12px; font-weight: 700; fill: var(--text); }
+.osi-dev text { font-size: 10.5px; font-weight: 700; fill: var(--text); }
 .osi-dev { cursor: pointer; }
 .osi-dev.active rect { stroke: var(--glow); stroke-width: 3; fill: color-mix(in srgb, var(--glow) 18%, var(--panel)); }
 .osi-seg rect { fill: hsl(var(--h) var(--vbg-s) calc(var(--vbg-l) - 8%)); stroke: hsl(var(--h) var(--vbd-s) var(--vbd-l)); stroke-width: 1.5; }
-.osi-seg text { font: 700 11.5px var(--mono); fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
+.osi-seg text { font: 700 10.5px var(--mono); fill: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
+.osi-seg.flying rect { stroke-width: 2.5; filter: drop-shadow(0 0 5px hsl(var(--h) 80% 55%)); }
 .osi-seg.pop { animation: osi-pop 0.5s ease-out; transform-box: fill-box; transform-origin: center; }
 @keyframes osi-pop { 0% { transform: scale(0.2) translateY(-30px); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: none; } }
-.osi-seg.peel { animation: osi-peel 0.45s ease-in forwards; transform-box: fill-box; transform-origin: center; }
-@keyframes osi-peel { to { transform: translateY(-34px) rotate(-12deg); opacity: 0; } }
-.osi-cap-label { font-size: 12px; font-weight: 800; fill: var(--accent); }
-.osi-link { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .osi-bit { font: 800 13px var(--mono); }
 .osi-bit.b1 { fill: var(--glow); }
 .osi-bit.b0 { fill: var(--accent); }
-.osi-info dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; }
-.osi-info dt { color: var(--muted); font-size: 12.5px; }
+.osi-info { margin: 4px 0 0; font-size: 13px; display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; }
+.osi-info dt { color: var(--muted); font-size: 12px; }
 .osi-info dd { margin: 0; }
 
 /* ── 사다리 ── */

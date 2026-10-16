@@ -80,6 +80,10 @@ export function detailBox(placeholder: string): { el: HTMLElement; show(title: s
 export interface Player {
   el: HTMLElement;
   setLabel(text: string): void;
+  /** k단계로 간다. 앞으로 갈 때는 지나는 단계를 하나씩 움직여 보여 준다 */
+  jump(k: number): Promise<void>;
+  /** 지금 몇 단계인지 (-1은 시작 전) */
+  at(): number;
   dispose(): void;
 }
 export function player(opts: { steps: number; go: (i: number, instant: boolean) => Promise<void> | void; reset: () => void; label?: (i: number) => string; delay?: number }): Player {
@@ -134,9 +138,19 @@ export function player(opts: { steps: number; go: (i: number, instant: boolean) 
   prev.addEventListener('click', () => { playing = false; if (i > 0) void goto(i - 1); else { opts.reset(); i = -1; paint(); } });
   first.addEventListener('click', () => { playing = false; opts.reset(); i = -1; paint(); });
   paint();
+  const jump = async (k: number) => {
+    playing = false;
+    paint();
+    if (busy) return;
+    if (k === i) return;
+    if (k < i) { await goto(k); return; }
+    while (alive && i < k) await goto(i + 1);
+  };
   return {
     el: bar,
     setLabel: (t) => { pos.textContent = t; },
+    jump,
+    at: () => i,
     dispose: () => { alive = false; playing = false; },
   };
 }
