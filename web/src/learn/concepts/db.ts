@@ -5,12 +5,11 @@ import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { joinLab, relAlgLab } from '../three/joinLab';
 import { integrityLab, keysLab, relTermsLab } from '../three/dbLabs';
-import { hashTable } from '../custom/misc';
 import { sqlLab } from '../three/sqlLab';
 import { normLab } from '../three/normLab';
 import { txLab } from '../three/txLab';
 import { orderLab } from '../three/orderLab';
-import { notationViz, treeViz } from '../custom/sims';
+import { hashLab, notationLab, treeLab } from '../three/dsLabs';
 import type { Concept } from './types';
 
 export const DB: Concept[] = [
@@ -188,13 +187,13 @@ export const DB: Concept[] = [
     id: 'hash', name: '해시 테이블', en: 'Hash Table', cat: 'ds',
     summary: '키를 해시 함수에 넣어 주소를 바로 계산한다. 다른 키가 같은 주소가 되는 충돌은 체이닝이나 개방 주소법으로 해결한다.',
     match: ['충돌', '체이닝', '버킷', '해시 테이블', '선형 조사', '동의어', 'Collision', 'Chaining', '해싱 함수'],
-    make: hashTable,
+    make: hashLab,
   },
   {
     id: 'tree', name: '트리 순회와 수식 표기', en: 'Tree Traversal · Notation', cat: 'ds',
     summary: '전위(루트 먼저), 중위(루트 가운데), 후위(루트 나중). 수식 트리를 후위 순회하면 후위식이 된다.',
     match: ['순회', '전위', '중위', '후위', '표기', '이진 트리', 'Preorder', 'Inorder', 'Postorder'],
-    make: () => tabs([{ name: '트리 순회', make: treeViz }, { name: '수식 표기 변환', make: notationViz }]),
+    make: () => tabs([{ name: '트리 순회', make: treeLab }, { name: '수식 표기 변환', make: notationLab }]),
   },
   {
     id: 'datanew', name: '데이터 신기술', en: 'Big Data · Mining · Blockchain', cat: 'db',
