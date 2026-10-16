@@ -3,6 +3,7 @@
 import type { Extension } from '@codemirror/state';
 import { CodeEditor } from '../view/editor';
 import { Stage, el, type StageView } from '../view/stage';
+import { TERMS, narrate, narrationView, type Spot, type Term } from '../view/narrate';
 import { Session } from '../trace/session';
 import type { Trace } from '../trace/types';
 import { runCode, LockedError, loginUrl } from '../api';
@@ -53,8 +54,8 @@ const TEMPLATE = `
       <button data-cmd="continue" title="다음 중단점까지 (F5)">⏭ 계속</button>
       <span class="grow"></span>
       <div class="seg" role="group" aria-label="보기 방식">
-        <button data-view="3d" title="입체로 보기">3D</button>
-        <button data-view="2d" title="표로 보기">2D</button>
+        <button data-view="3d" title="3D: 함수 호출(프레임)을 판으로 쌓고, 변수를 상자로, 객체를 힙 판 위의 블록으로 입체로 보여 줍니다. 값이 바뀌는 순간 블록이 움직입니다.">3D</button>
+        <button data-view="2d" title="2D: 호출 스택과 힙을 표로 보여 줍니다. 한눈에 값을 읽기 좋습니다.">2D</button>
       </div>
     </div>
     <div class="dbg-pos">
@@ -63,7 +64,9 @@ const TEMPLATE = `
     </div>
     <p class="hint muted small" data-id="hint">실행한 뒤 코드의 줄을 누르면 그 줄이 실행된 직후로 이동합니다.
       반복문 안의 줄은 누를 때마다 다음 회차로 갑니다. 줄 번호 왼쪽을 누르면 중단점(●)이 생깁니다.</p>
+    <div class="narr" data-id="narr" aria-live="polite"></div>
     <div class="stage" data-id="stage"></div>
+    <div class="narr-legend" data-id="legend"></div>
   </section>
 </div>`;
 
@@ -98,6 +101,28 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
   ui.sample.after(reset);
   const stageHost = q('stage');
   let stage: StageView = new Stage(stageHost);
+  // ── 해설: 방금 일어난 일 + 그림 보는 법 ──
+  const narrBox = q('narr');
+  const legendBox = q('legend');
+  const defBox = el('div', 'narr-def');
+  defBox.hidden = true;
+  const showTerm = (t: Term, sp?: Spot) => {
+    const T = TERMS[t];
+    defBox.hidden = false;
+    defBox.replaceChildren(el('b', '', T.name), ` — ${T.text(lang.id)}`);
+    if (sp?.kind === 'out') { ui.console.classList.remove('spot'); void ui.console.offsetWidth; ui.console.classList.add('spot'); ui.console.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    else if (sp) stage.spot?.(sp);
+  };
+  {
+    legendBox.append(el('span', 'muted small', '그림 보는 법 (누르면 그 자리가 빛납니다):'));
+    for (const t of ['stack', 'frame', 'local', 'heap', lang.id === 'c' ? 'pointer' : 'ref', 'field', 'changed', 'ret', 'gc', 'out'] as Term[]) {
+      const b = el('button', 'narr-term', TERMS[t].name);
+      b.addEventListener('click', () => showTerm(t, TERMS[t].spot ? { kind: TERMS[t].spot! } : undefined));
+      legendBox.append(b);
+    }
+    legendBox.append(defBox);
+  }
+  narrBox.append(el('p', 'muted small', '실행하면 단계마다 "방금 무슨 일이 일어났는지"를 여기서 풀어 줍니다.'));
   stage.clear();
   let disposed = false;
   let sourceLines: string[] = [];
@@ -259,6 +284,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     ui.slider.max = '0';
     ui.pos.textContent = '-';
     stage.clear();
+    narrBox.replaceChildren(el('p', 'muted small', '실행하면 단계마다 "방금 무슨 일이 일어났는지"를 여기서 풀어 줍니다.'));
     updateButtons();
   }
 
@@ -282,6 +308,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     const kind = step.event === 'exception' ? 'exception' : step.event === 'return' ? 'return' : 'line';
     editor.mark(step.line, errorLines, kind);
     stage.render(step, prev, { index: session.cur, steps: session.steps, source: sourceLines, stdout: trace.stdout, lang: lang.id });
+    narrBox.replaceChildren(...narrationView(narrate(step, prev, sourceLines, trace.stdout, lang.id), showTerm));
     ui.console.textContent = trace.stdout.slice(0, step.out);
     ui.slider.max = String(session.last);
     ui.slider.value = String(session.cur);

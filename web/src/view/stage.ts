@@ -16,6 +16,8 @@ export interface StageView {
   clear(message?: string): void;
   render(step: Step, prev: Step | undefined, ctx: RenderCtx): void;
   setTempo?(ms: number): void;
+  /** 해설에서 용어를 누르면 그 자리를 잠깐 빛낸다 */
+  spot?(s: import('./narrate').Spot): void;
   dispose(): void;
 }
 
@@ -86,6 +88,17 @@ export class Stage implements StageView {
     }
   }
 
+  spot(s: import('./narrate').Spot) {
+    const q = s.kind === 'stack' ? '.frames' : s.kind === 'frame' ? '.frame.top' : s.kind === 'heap' ? '.heap'
+      : s.kind === 'obj' ? `[data-obj="${CSS.escape(s.id ?? '')}"]` : s.kind === 'var' ? `.frame.top tr[data-var="${CSS.escape(s.name ?? '')}"]` : '';
+    const n = q ? this.root.querySelector<HTMLElement>(q) : null;
+    if (!n) return;
+    n.classList.remove('spot');
+    void n.offsetWidth;
+    n.classList.add('spot');
+    n.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
   clear(message?: string) {
     this.root.replaceChildren(el('p', 'muted', message ?? '실행하면 여기에 변수와 자료구조가 나타납니다.'));
   }
@@ -145,6 +158,7 @@ export class Stage implements StageView {
 
   private varRow(v: Var, heap: Record<string, HeapObj>, changed: boolean): HTMLTableRowElement {
     const tr = el('tr', changed ? 'changed' : '');
+    tr.dataset.var = v.name;
     tr.append(el('td', 'vname', v.name), el('td', 'vtype muted', v.type));
     const td = el('td', 'vval');
     td.append(this.valueNode(v.value, heap));

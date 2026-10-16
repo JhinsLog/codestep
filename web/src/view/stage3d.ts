@@ -16,6 +16,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { Frame, HeapObj, Step, Value, Var } from '../trace/types';
+import type { Spot } from './narrate';
 import { el, fnLabel, shortAddr, showValue, type RenderCtx, type StageView } from './stage';
 import { face, label, release, setAnisotropy, MONO, type Run, type Tex } from './three/text';
 import { isDark, onTheme } from '../theme';
@@ -804,12 +805,38 @@ export class Stage3D implements StageView {
       lb.ttl = 1.8;
     }
 
+    this.spotStep = step;
     this.applyChanges(changes, { flowOk, animate, sources, srcPos, owners, step, fromStep, ctx });
     this.syncArrows(gen, animate);
     this.banner(step);
     if (!this.userCam) this.fit(!animate);
     this.shown = ctx.index;
     this.wake();
+  }
+
+  private spotStep: Step | null = null;
+
+  /** 해설에서 누른 용어의 자리(프레임·변수·힙 객체)를 잠깐 빛낸다 */
+  spot(s: Spot) {
+    const step = this.spotStep;
+    if (!step) return;
+    const top = step.frames.length - 1;
+    const keys: string[] = [];
+    if (s.kind === 'stack') step.frames.forEach((_f, i) => keys.push(frameKey(step.frames, i)));
+    else if (s.kind === 'frame') keys.push(frameKey(step.frames, top));
+    else if (s.kind === 'var') keys.push(`${frameKey(step.frames, top)}/${s.name}`);
+    else if (s.kind === 'heap') for (const id of Object.keys(step.heap)) keys.push(`H${id}`);
+    else if (s.kind === 'obj' && s.id) keys.push(`H${s.id}`);
+    const mats = keys.map((k) => (this.items.get(k) as { mesh?: Mesh<RoundedBoxGeometry, MeshStandardMaterial> } | undefined)?.mesh?.material).filter((m): m is MeshStandardMaterial => !!m);
+    if (!mats.length) return;
+    const t0 = performance.now(), dur = 1800;
+    const tick = () => {
+      const t = (performance.now() - t0) / dur;
+      for (const m of mats) { m.emissive.setHex(0xfacc15); m.emissiveIntensity = t >= 1 ? 0 : Math.abs(Math.sin(t * Math.PI * 3)) * 0.6; }
+      this.wake();
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    tick();
   }
 
   dispose() {
