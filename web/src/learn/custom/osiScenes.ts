@@ -168,7 +168,7 @@ const mac = () => scene({
     const t = s.token('목적 MAC: BB', 60, 95);
     await t.move(250, 95, 800);
     await s.say('sw', 'BB는 1번 포트에 있다', '', 1100);
-    await t.move(470, 35 + 26, 800);
+    await t.move(380, 35, 800);
     s.flash('b');
     await s.say('b', '내 MAC 맞음', 'good', 900);
     s.caption('스위치는 MAC 주소표를 보고 목적지 포트로만 보낸다(C, D는 받지 않는다). MAC은 구간마다 바뀌고, IP는 끝까지 그대로다');
@@ -184,7 +184,7 @@ const hub = () => scene({
     const t = s.token('BB에게', 60, 95);
     await t.move(250, 95, 800);
     t.remove();
-    const xs = [35, 95, 155].map((y) => s.token('BB에게', 250, 95).move(470, y + 26, 800));
+    const xs = [35, 95, 155].map((y) => s.token('BB에게', 250, 95).move(385, y, 800));
     await Promise.all(xs);
     void s.say('c', '내 거 아님 → 버림', 'bad', 1300);
     void s.say('d', '내 거 아님 → 버림', 'bad', 1300);

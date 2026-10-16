@@ -40,7 +40,7 @@ class Stop extends Error {}
 const textW = (t: string) => [...t].reduce((a, c) => a + (c.charCodeAt(0) < 128 ? 6.6 : 11.5), 0);
 
 export function scene(spec: SceneSpec): HTMLElement {
-  const W = spec.w ?? 560, H = spec.h ?? 170;
+  const W = spec.w ?? 560, H = spec.h ?? 190;
   const box = el('div', 'scene');
   const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'scene-svg' });
   const cap = el('p', 'scene-cap');
@@ -95,6 +95,9 @@ export function scene(spec: SceneSpec): HTMLElement {
           g,
           async move(nx, ny, ms = 900) {
             alive();
+            // 등장인물 상자 위에 내려앉으면 상자가 가려지므로, 상자 바로 아래에 멈춘다
+            const hit = spec.actors.find((a) => Math.abs(a.x - nx) < Math.max(64, textW(a.label) + 16) / 2 && Math.abs(a.y - ny) < 22);
+            if (hit) ny = hit.y + 34 + 12 <= H ? hit.y + 34 : hit.y - 34;   // 아래에 자리가 없으면 위에
             const fx = cx, fy = cy;
             await tween(T(ms), (k) => { cx = lerp(fx, nx, k); cy = lerp(fy, ny, k); put(); }).done;
             alive();
@@ -110,13 +113,14 @@ export function scene(spec: SceneSpec): HTMLElement {
         alive();
         const a = byId.get(id)!;
         const w = textW(text) + 18;
+        const bx = Math.min(Math.max(a.x, w / 2 + 4), W - w / 2 - 4);   // 말풍선이 그림 밖으로 나가지 않게
         // 위에 자리가 없으면 아래에 단다
         const below = a.y - 56 < 2;
         const by = below ? a.y + 58 : a.y - 34;
         const g = svg('g', { class: `scene-say ${cls}` });
-        g.append(svg('rect', { x: a.x - w / 2, y: by - 22, width: w, height: 24, rx: 8 }),
+        g.append(svg('rect', { x: bx - w / 2, y: by - 22, width: w, height: 24, rx: 8 }),
           svg('path', { d: below ? `M${a.x - 5} ${by - 22} L${a.x} ${by - 29} L${a.x + 5} ${by - 22} z` : `M${a.x - 5} ${by + 2} L${a.x} ${by + 9} L${a.x + 5} ${by + 2} z` }),
-          svg('text', { x: a.x, y: by - 6, 'text-anchor': 'middle' }, text));
+          svg('text', { x: bx, y: by - 6, 'text-anchor': 'middle' }, text));
         top.append(g);
         await tween(T(200), (k) => g.setAttribute('opacity', String(k))).done;
         await new Promise((r) => setTimeout(r, T(ms)));

@@ -3,14 +3,21 @@
 import { el } from '../../view/stage';
 import { detailBox, frame, nameHits, tween, type Viz } from '../core';
 
-export interface BoardItem { name: string; en?: string; desc?: string }
-export interface BoardGroup { name: string; en?: string; desc?: string; hue?: number; items: BoardItem[] }
+export interface BoardItem { name: string; en?: string; desc?: string; scene?: () => HTMLElement }
+export interface BoardGroup { name: string; en?: string; desc?: string; hue?: number; items: BoardItem[]; scene?: () => HTMLElement }
 export interface BoardSpec { title: string; en?: string; groups: BoardGroup[]; note?: string; quiz?: boolean }
 
 export function board(spec: BoardSpec): () => Viz {
   return () => {
     const { root, body } = frame(spec.title, spec.en);
-    const detail = detailBox('항목을 누르면 설명이 나옵니다.');
+    const hasScene = spec.groups.some((g) => g.scene || g.items.some((i) => i.scene));
+    const detail = detailBox(hasScene ? '항목(🎬 표시)을 누르면 예시 애니메이션과 설명이 나옵니다.' : '항목을 누르면 설명이 나옵니다.');
+    const showWith = (title: string, text: string, sub: string | undefined, sc?: () => HTMLElement) => {
+      if (!sc) { detail.show(title, text, sub); return; }
+      const box = el('div');
+      box.append(sc(), el('p', '', text));
+      detail.show(title, box, sub);
+    };
     const tools = el('div', 'viz-tools');
     const quizBtn = el('button', '', '🧩 분류 연습');
     if (spec.quiz !== false && spec.groups.length > 1) tools.append(quizBtn);
@@ -22,21 +29,21 @@ export function board(spec: BoardSpec): () => Viz {
       const col = el('div', 'board-col');
       col.style.setProperty('--h', String(g.hue ?? (gi * 360) / spec.groups.length + 200));
       const head = el('button', 'board-head');
-      head.append(el('b', '', g.name));
+      head.append(el('b', '', g.scene ? `🎬 ${g.name}` : g.name));
       if (g.en) head.append(el('span', 'board-en', g.en));
       head.addEventListener('click', () => {
         if (selected) { drop(gi); return; }
-        detail.show(g.name, g.desc ?? `${g.items.map((i) => i.name).join(', ')}`, g.en);
+        showWith(g.name, g.desc ?? `${g.items.map((i) => i.name).join(', ')}`, g.en, g.scene);
       });
       const list = el('div', 'board-items');
       col.append(head, list);
       for (const it of g.items) {
-        const chip = el('button', 'board-chip');
-        chip.append(el('span', '', it.name));
+        const chip = el('button', `board-chip${it.scene ? ' has-scene' : ''}`);
+        chip.append(el('span', '', it.scene ? `🎬 ${it.name}` : it.name));
         if (it.en) chip.append(el('span', 'board-en', it.en));
         chip.addEventListener('click', () => {
           if (!pool.hidden && chip.parentElement === pool) { select(chip); return; }
-          detail.show(it.name, it.desc ?? `${g.name}에 속한다.`, it.en);
+          showWith(it.name, it.desc ?? `${g.name}에 속한다.`, it.en, it.scene);
         });
         list.append(chip);
         chips.push({ chip, g: gi, it });

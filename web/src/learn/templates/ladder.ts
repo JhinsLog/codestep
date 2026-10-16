@@ -3,7 +3,7 @@
 import { el } from '../../view/stage';
 import { detailBox, frame, nameHits, player, tween, type Viz } from '../core';
 
-export interface LadderItem { name: string; en?: string; desc: string; tag?: string }
+export interface LadderItem { name: string; en?: string; desc: string; tag?: string; scene?: () => HTMLElement }
 export interface LadderSpec {
   title: string;
   en?: string;
@@ -19,7 +19,7 @@ export interface LadderSpec {
 export function ladder(spec: LadderSpec): () => Viz {
   return () => {
     const { root, body } = frame(spec.title, spec.en);
-    const detail = detailBox('막대를 누르면 설명이 나옵니다. ▶ 재생을 누르면 순서대로 짚어 줍니다.');
+    const detail = detailBox(spec.items.some((i) => i.scene) ? '막대를 누르면 예시 애니메이션과 설명이 나옵니다. ▶ 재생을 누르면 순서대로 짚어 줍니다.' : '막대를 누르면 설명이 나옵니다. ▶ 재생을 누르면 순서대로 짚어 줍니다.');
     const wrap = el('div', `ladder ${spec.shape ?? 'bars'}`);
     const col = el('div', 'ladder-col');
     const n = spec.items.length;
@@ -33,15 +33,25 @@ export function ladder(spec: LadderSpec): () => Viz {
       b.append(el('span', 'ladder-rank', String(k + 1)), el('b', '', it.name));
       if (it.en) b.append(el('span', 'ladder-en', it.en));
       if (it.tag) b.append(el('span', 'ladder-tag', it.tag));
-      b.addEventListener('click', () => pick(k));
+      b.addEventListener('click', () => pick(k, true));
       col.append(b);
       return b;
     });
     wrap.append(el('div', 'ladder-end top', `▲ ${spec.top}`), col, el('div', 'ladder-end bottom', `▼ ${spec.bottom}`));
-    const pick = (k: number) => {
+    /** withScene: 눌러서 고르면 예시 장면까지, 재생 중에는 글만 */
+    const pick = (k: number, withScene = false) => {
       bars.forEach((b, j) => b.classList.toggle('picked', j === k));
       const it = spec.items[k]!;
-      detail.show(`${k + 1}. ${it.name}`, it.desc, it.en);
+      if (!it.scene) { detail.show(`${k + 1}. ${it.name}`, it.desc, it.en); return; }
+      const box = el('div');
+      if (withScene) box.append(it.scene());
+      else {
+        const open = el('button', 'scene-open', '🎬 예시 애니메이션으로 보기');
+        open.addEventListener('click', () => open.replaceWith(it.scene!()));
+        box.append(open);
+      }
+      box.append(el('p', '', it.desc));
+      detail.show(`${k + 1}. ${it.name}`, box, it.en);
     };
     // 처음 열 때 막대가 차례로 올라온다
     const anims = bars.map((b, k) => {
