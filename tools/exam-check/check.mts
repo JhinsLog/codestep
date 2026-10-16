@@ -103,7 +103,7 @@ for (const p of ALL) {
     }
   } else if (p.kind === 'sql') {
     ran++;
-    const out = await sqlRun(p.setup, p.query);
+    const out = await sqlRun(p.before ? `${p.setup}\n${p.before}` : p.setup, p.query);
     const text = typeof out === 'string' ? out : p.count ? String(out.length) : out.join('\n');
     const ok = sameOutput(text, p.answer);
     if (!ok) bad++;

@@ -35,7 +35,7 @@ export function fill(lang: 'c' | 'java' | 'python', title: string, question: str
 
 /** SQL 실행 결과 쓰기 */
 export function sqlOut(title: string, question: string, setup: string, query: string, answer: string, explain: string,
-  extra: { count?: boolean } & Opt = {}): Draft {
+  extra: { count?: boolean; before?: string } & Opt = {}): Draft {
   return { kind: 'sql', cat: 'sql', title, question, setup, query, answer, explain, ...extra };
 }
 
@@ -43,6 +43,12 @@ export function sqlOut(title: string, question: string, setup: string, query: st
 export function sqlWrite(title: string, question: string, setup: string, answer: string, explain: string,
   extra: { check?: string } & Opt = {}): Draft {
   return { kind: 'sql-write', cat: 'sql', title, question, setup, answer, explain, ...extra };
+}
+
+/** 여러 개를 고르는 보기 문제의 답: 어떤 순서로 써도 인정한다 (['ㄱ', 'ㄷ'] → 'ㄱ, ㄷ', 'ㄷ, ㄱ') */
+export function anyOrder(items: string[]): string[] {
+  if (items.length <= 1) return items;
+  return items.flatMap((x, i) => anyOrder(items.filter((_, j) => j !== i)).map((rest) => `${x}, ${rest}`));
 }
 
 /** 그 밖의 유형(시뮬레이터 문제 등)은 그대로 */

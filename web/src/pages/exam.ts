@@ -644,7 +644,7 @@ function material(p: Problem): HTMLElement {
       box.append(setupTables(p.setup));
       const q = el('pre', 'ex-code');
       q.dataset.lang = 'SQL';
-      q.textContent = p.query;
+      q.textContent = p.before ? `${p.before.trim()}\n\n${p.query}` : p.query;
       box.append(q);
       break;
     }
@@ -725,7 +725,7 @@ function mountSolve(root: HTMLElement, p: Problem): () => void {
     el('span', 'muted small', `정답: ${answerOf(p).replace(/\n/g, ' / ')}`),
   );
   root.classList.add('exam-solve');
-  if (p.kind === 'sql') return mountSql(root, { setup: p.setup, query: p.query, header: bar });
+  if (p.kind === 'sql') return mountSql(root, { setup: p.before ? `${p.setup}\n${p.before}` : p.setup, query: p.query, header: bar });
   if (p.kind === 'sql-write') {
     return p.check
       ? mountSql(root, { setup: `${p.setup}\n-- 모범 답안\n${p.answer}`, query: p.check, header: bar })

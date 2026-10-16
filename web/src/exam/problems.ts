@@ -49,8 +49,9 @@ export type Problem =
   | Base & { kind: 'code'; lang: 'c' | 'java' | 'python'; code: string; answer: string }
   // 코드 빈칸: code 안의 빈칸 표시(blanks[].label)를 대표 답으로 채우면 out이 출력된다
   | Base & { kind: 'code-blank'; lang: 'c' | 'java' | 'python'; code: string; blanks: Blank[]; out: string }
-  // SQL 실행 결과 쓰기. count면 결과 행(튜플)의 개수를 묻는다
-  | Base & { kind: 'sql'; setup: string; query: string; answer: string; count?: boolean }
+  // SQL 실행 결과 쓰기. count면 결과 행(튜플)의 개수를 묻는다.
+  // before: 조회 전에 실행하는 문장(DELETE 등). 표는 before 전의 모습으로 보여 주고, 문장은 조회문과 함께 보여 준다
+  | Base & { kind: 'sql'; setup: string; query: string; answer: string; count?: boolean; before?: string }
   // SQL 작성: 쓴 SQL을 실제로 실행해 모범 답안과 결과를 비교한다. check는 실행 뒤 상태를 확인하는 조회문
   | Base & { kind: 'sql-write'; setup: string; answer: string; check?: string }
   // 용어·빈칸·보기 선택·계산 단답
