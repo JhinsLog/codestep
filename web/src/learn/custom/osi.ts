@@ -3,6 +3,7 @@
 // 계층을 누르면 지금 위치에서 그 계층까지 한 칸씩 진행한다.
 import { el } from '../../view/stage';
 import { detailBox, frame, lerp, linear, nameHits, player, svg, tween, type Viz } from '../core';
+import { LAYER_SCENE, OSI_SCENES } from './osiScenes';
 
 interface Layer { n: number; ko: string; en: string; pdu: string; protos: string; devices: string; role: string }
 
@@ -114,7 +115,11 @@ export function osiViz(): Viz {
     const g = svg('g', { class: 'osi-dev' });
     g.append(svg('rect', { x: d.x - 38, y: WIRE_Y - 12, width: 76, height: 24, rx: 6 }),
       svg('text', { x: d.x, y: WIRE_Y + 4, 'text-anchor': 'middle' }, `${d.name} L${d.layer}`));
-    g.addEventListener('click', () => detail.show(`${d.name} (${d.layer}계층 장비)`, d.note));
+    g.addEventListener('click', () => {
+      const box = el('div');
+      box.append(OSI_SCENES[{ 허브: 'hub', 스위치: 'switch', 라우터: 'router' }[d.name]!]!(), el('p', '', d.note));
+      detail.show(`${d.name} (${d.layer}계층 장비)`, box);
+    });
     s.append(g);
     return g;
   });
@@ -143,7 +148,7 @@ export function osiViz(): Viz {
     const sg = SEG[k]!;
     const L = OSI.find((x) => x.n === sg.layer)!;
     const box = el('div');
-    box.append(el('p', '', sg.has));
+    box.append(OSI_SCENES[k]!(), el('p', '', sg.has));
     const who = k === 'data' ? '보내는 쪽 응용 프로그램이 만들고, 받는 쪽 응용 프로그램이 받는다.'
       : k === 'enc' ? '보내는 쪽 6계층(표현)이 암호화하고, 받는 쪽 6계층이 복호화한다.'
         : `보내는 쪽 ${L.n}계층(${L.ko})이 ${sg.tail ? '뒤에' : '앞에'} 붙이고, 받는 쪽 ${L.n}계층이 확인한 뒤 떼어 낸다. 다른 계층은 이 조각을 그냥 짐으로 나른다.`;
@@ -311,6 +316,11 @@ export function osiViz(): Viz {
         const L = OSI.find((x) => x.n === st.n);
         const box = el('div');
         box.append(el('p', '', st.b));
+        // 이 단계에서 무슨 일이 일어나는지 보여 주는 예시 장면 (누르면 펼친다)
+        const key = st.n ? LAYER_SCENE[st.n]! : 'hub';
+        const open = el('button', 'scene-open', '🎬 예시 애니메이션으로 보기');
+        open.addEventListener('click', () => open.replaceWith(OSI_SCENES[key]!()));
+        box.append(open);
         if (L) box.append(layerInfo(L));
         detail.show(st.t, box, L ? `${L.n}계층 ${L.ko} 계층 · ${L.en}` : undefined);
       }
@@ -329,6 +339,8 @@ export function osiViz(): Viz {
     speed = Math.abs(k - pl.at()) > 3 ? 0.55 : 1;
     await pl.jump(k);
     speed = 1;
+    // 도착하면 그 계층에서 일어나는 일을 장면으로 바로 보여 준다
+    detail.el.querySelector<HTMLButtonElement>('.scene-open')?.click();
   }
 
   const scroll = el('div', 'viz-scroll');

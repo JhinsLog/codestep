@@ -344,3 +344,38 @@ button.danger { border-color: var(--error); color: var(--error); }
 .osi-chip b { font: 800 12px var(--mono); color: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
 .osi-chip.fresh { animation: viz-glow 1.2s ease-in-out 2; }
 .osi-chip.picked { box-shadow: 0 0 0 2px var(--accent); }
+
+/* ── 설명 장면 ── */
+.scene { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; padding: 8px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); max-width: 640px; }
+.scene-svg { width: 100%; height: auto; }
+.scene-foot { display: flex; align-items: flex-start; gap: 8px; }
+.scene-cap { margin: 0; flex: 1; font-size: 13px; font-weight: 600; line-height: 1.5; min-height: 2.6em; }
+.scene-cap.pop { animation: viz-pop 0.3s ease-out; }
+.scene-again { font-size: 12px; padding: 3px 8px; }
+.scene-open { align-self: flex-start; margin: 4px 0; font-weight: 700; }
+.scene-link { stroke: var(--line); stroke-width: 3; }
+.scene-link.dash { stroke-dasharray: 6 5; }
+.scene-actor rect { fill: var(--panel); stroke: var(--accent); stroke-width: 1.6; }
+.scene-actor.bad rect { stroke: var(--error); fill: var(--error-soft); }
+.scene-actor.dim { opacity: 0.55; }
+.scene-actor.flash rect { animation: scene-flash 0.9s ease-out; }
+@keyframes scene-flash { 30% { fill: color-mix(in srgb, var(--glow) 45%, var(--panel)); stroke: var(--glow); stroke-width: 3; } }
+.scene-icon { font-size: 18px; }
+.scene-label { font-size: 10.5px; font-weight: 700; fill: var(--text); }
+.scene-tok rect { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.scene-tok text { font: 700 11px var(--mono); fill: var(--text); }
+.scene-tok.locked rect { fill: color-mix(in srgb, var(--pass-text) 25%, var(--panel)); stroke: var(--pass-text); }
+.scene-tok.plain rect { fill: color-mix(in srgb, var(--glow) 25%, var(--panel)); stroke: var(--glow); }
+.scene-tok.broken rect, .scene-tok.ack rect { fill: var(--error-soft); stroke: var(--error); }
+.scene-say rect { fill: var(--panel); stroke: var(--muted); stroke-width: 1.2; }
+.scene-say path { fill: var(--muted); }
+.scene-say text { font-size: 11.5px; font-weight: 700; fill: var(--text); }
+.scene-say.bad rect { stroke: var(--error); fill: var(--error-soft); } .scene-say.bad path { fill: var(--error); }
+.scene-say.good rect { stroke: var(--pass-text); fill: var(--pass); } .scene-say.good path { fill: var(--pass-text); }
+.scene-mark { font-size: 13px; font-weight: 800; fill: var(--text); }
+.scene-mark.x, .scene-mark.bolt { font-size: 18px; fill: var(--error); }
+.scene-mark.flag { fill: var(--glow); font-size: 12px; }
+.scene-mark.got { fill: var(--pass-text); font-family: var(--mono); }
+.scene-mark.b1 { fill: var(--glow); font-family: var(--mono); } .scene-mark.b0 { fill: var(--accent); font-family: var(--mono); }
+.scene-mark.axis { font-size: 10px; fill: var(--muted); }
+.scene-wave { fill: none; stroke: var(--glow); stroke-width: 3; transition: stroke-dashoffset 0.25s linear; }
