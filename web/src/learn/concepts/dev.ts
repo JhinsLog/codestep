@@ -4,7 +4,7 @@ import { fields } from '../three/adapt';
 import { graph } from '../three/adapt';
 import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
-import { coverage, integration, vModel } from '../custom/misc';
+import { coverageLab, integrationLab, vModelLab } from '../three/devLabs';
 import type { Concept } from './types';
 
 export const DEV: Concept[] = [
@@ -12,7 +12,7 @@ export const DEV: Concept[] = [
     id: 'testlevels', name: '테스트 단계', en: 'V-Model · Unit · Integration · System · Acceptance', cat: 'dev',
     summary: '단위 → 통합 → 시스템 → 인수 테스트. 통합할 때 하향식은 스텁(가짜 하위), 상향식은 드라이버(가짜 상위)를 쓴다.',
     match: ['V-모델', 'V 모델', '단위 테스트', '통합 테스트', '시스템 테스트', '인수 테스트', '알파', '베타', '상향식', '하향식', '스텁', '드라이버', '클러스터', '빅뱅', 'Stub', 'Driver'],
-    make: () => tabs([{ name: '스텁과 드라이버', make: integration }, { name: 'V-모델', make: vModel }, { name: '인수 테스트', make: board({ title: '인수 테스트의 종류', groups: [
+    make: () => tabs([{ name: '스텁과 드라이버', make: integrationLab }, { name: 'V-모델', make: vModelLab }, { name: '인수 테스트', make: board({ title: '인수 테스트의 종류', groups: [
       { name: '알파 테스트', en: 'Alpha Test', hue: 210, items: [{ name: '개발자의 장소', desc: '사용자가 시험하고, 개발자가 옆에서 지켜보며 기록한다 (통제된 환경)' }] },
       { name: '베타 테스트', en: 'Beta Test', hue: 30, items: [{ name: '사용자의 실제 환경', desc: '개발자 없이 실제 사용자가 써 보고 문제를 보고한다' }] },
       { name: '그 밖의 인수 테스트', hue: 140, items: [{ name: '사용자 인수' }, { name: '운영상 인수' }, { name: '계약 인수' }, { name: '규정 인수' }] },
@@ -44,7 +44,7 @@ export const DEV: Concept[] = [
     id: 'coverage', name: '커버리지', en: 'Statement · Decision · Condition · MC/DC', cat: 'dev',
     summary: '구문(모든 문장) < 결정(결정 전체 참·거짓) < 조건/결정 < MC/DC < 다중 조건(모든 조합). 직접 케이스를 켜고 꺼 보세요.',
     match: ['커버리지', 'Coverage', 'MC/DC', '구문 커버리지', '결정 커버리지', '조건 커버리지', '분기 커버리지', '문장 커버리지'],
-    make: () => stack([coverage(), ladder({ title: '커버리지 강도', top: '약함', bottom: '강함', shape: 'stairs', hue: [200, 0], items: [
+    make: () => stack([coverageLab(), ladder({ title: '커버리지 강도', top: '약함', bottom: '강함', shape: 'stairs', hue: [200, 0], items: [
       { name: '구문 커버리지', en: 'Statement', desc: '모든 문장을 한 번 이상 실행' },
       { name: '결정 커버리지', en: 'Decision · Branch', desc: '모든 결정(분기)이 참·거짓을 한 번 이상' },
       { name: '조건/결정 커버리지', en: 'Condition/Decision', desc: '결정 전체와 개별 조건이 모두 참·거짓을 한 번 이상' },

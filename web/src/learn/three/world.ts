@@ -141,8 +141,8 @@ export class World {
   }
 
   /** 카메라가 target을 바라보며 dist 거리에서 비스듬히 보게 */
-  look(target: Vector3, dist: number, ms = 800) {
-    const dir = new Vector3(0.12, 0.78, 1).normalize();
+  look(target: Vector3, dist: number, ms = 800, tilt = 0.78) {
+    const dir = new Vector3(0.12, tilt, 1).normalize();
     const to = target.clone().add(dir.multiplyScalar(dist));
     const fp = this.camera.position.clone(), ft = this.controls.target.clone();
     tween(reduced() ? 0 : ms, (t) => {
@@ -152,10 +152,10 @@ export class World {
   }
 
   /** x0~x1, z0~z1 범위가 화면에 다 들어오게 카메라를 옮긴다 */
-  fit(x0: number, x1: number, z0: number, z1: number, ms = 800) {
+  fit(x0: number, x1: number, z0: number, z1: number, ms = 800, tilt = 0.78) {
     const half = Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * this.camera.aspect);
     const d = Math.max(7, ((x1 - x0) / 2 / Math.tan(half)) * 1.4, (z1 - z0) * 1.08);
-    this.look(new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.4), d, ms);
+    this.look(new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.4), d, ms, tilt);
   }
 
   // ── 만들기 ──

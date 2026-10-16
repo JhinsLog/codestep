@@ -5,8 +5,8 @@ import { graph } from '../three/adapt';
 import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { osiViz } from '../custom/osi';
-import { cloud } from '../custom/misc';
-import { subnetViz } from '../custom/sims';
+import { subnetLab } from '../three/netLabs';
+import { cloudLab } from '../three/devLabs';
 import type { Concept } from './types';
 
 export const NET: Concept[] = [
@@ -83,7 +83,7 @@ export const NET: Concept[] = [
     summary: 'IP 주소는 네트워크 부분과 호스트 부분으로 나뉜다. 마스크와 AND 하면 네트워크 주소, 호스트 비트를 모두 1로 하면 브로드캐스트 주소다.',
     match: ['IPv4', 'IPv6', '서브넷', 'CIDR', 'NAT', 'PAT', '사설 IP', '브로드캐스트 주소', '네트워크 주소', '프리픽스', 'IP 주소', '서브넷 마스크', '호스트에 할당'],
     make: () => tabs([
-      { name: '서브넷 계산', make: subnetViz },
+      { name: '서브넷 계산', make: subnetLab },
       { name: 'IPv4 vs IPv6', make: fields({ title: 'IPv4와 IPv6 주소', rows: [
         { label: 'IPv4 32비트', fields: [{ name: '192', text: '192', desc: '8비트씩 4부분, 10진수를 점(.)으로 구분' }, { name: '168', text: '168', desc: '0~255' }, { name: '10', text: '10', desc: '0~255' }, { name: '77', text: '77', desc: '약 43억 개 주소 → 부족 → NAT, IPv6' }] },
         { label: 'IPv6 128비트', fields: [{ name: '2001', text: '2001', desc: '16비트씩 8부분, 16진수를 콜론(:)으로 구분' }, { name: '0db8', text: '0db8', desc: '앞의 0은 생략 가능: 0db8 → db8' }, { name: '::', text: '::', w: 2, desc: '0으로만 된 연속 부분은 한 번만 ::로 줄인다' }, { name: '0001', text: '1', desc: '유니캐스트·멀티캐스트·애니캐스트 (브로드캐스트 없음)' }] },
@@ -251,7 +251,7 @@ export const NET: Concept[] = [
     id: 'cloud', name: '클라우드 서비스 모델', en: 'IaaS · PaaS · SaaS', cat: 'net',
     summary: '어디까지를 클라우드 업체가 관리하느냐의 차이: IaaS(인프라), PaaS(+플랫폼), SaaS(완성된 소프트웨어).',
     match: ['IaaS', 'PaaS', 'SaaS', '클라우드'],
-    make: cloud,
+    make: cloudLab,
   },
   {
     id: 'netnew', name: '네트워크 신기술', en: 'Ad-hoc · Mesh · SDN · Edge', cat: 'net',

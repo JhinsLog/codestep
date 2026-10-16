@@ -180,7 +180,7 @@ export function flowLab(spec: FlowSpec): () => Viz {
     const fit = () => {
       if (spec.view) { const [a, z, c, d] = spec.view; w.fit(a, z, c, d); return; }
       const xs = [...nodes.values()].map((n) => n.at[0]), zs = [...nodes.values()].map((n) => n.at[1]);
-      w.fit(Math.min(...xs) - 1.6, Math.max(...xs) + 1.6, Math.min(...zs) - 2.2, Math.max(...zs) + 1.4);
+      w.fit(Math.min(...xs) - 1.8, Math.max(...xs) + 1.8, Math.min(...zs) - 2.2, Math.max(...zs) + 2.4);
     };
 
     async function send(s: FSend) {
