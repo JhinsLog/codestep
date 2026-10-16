@@ -1,7 +1,7 @@
 // 운영체제 개념
-import { board } from '../templates/board';
-import { graph } from '../templates/graph';
-import { ladder } from '../templates/ladder';
+import { board } from '../three/adapt';
+import { graph } from '../three/adapt';
+import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { chmod, raid } from '../custom/misc';
 import { pagingViz, schedViz } from '../custom/sims';

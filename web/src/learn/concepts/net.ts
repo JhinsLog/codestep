@@ -1,8 +1,8 @@
 // 네트워크 개념
-import { board } from '../templates/board';
-import { fields } from '../templates/fields';
-import { graph } from '../templates/graph';
-import { seq } from '../templates/seq';
+import { board } from '../three/adapt';
+import { fields } from '../three/adapt';
+import { graph } from '../three/adapt';
+import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { osiViz } from '../custom/osi';
 import { cloud } from '../custom/misc';

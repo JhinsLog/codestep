@@ -67,6 +67,7 @@ for (const sc of plan) {
     else if (a.type) await page.locator(a.type[0]).first().pressSequentially(a.type[1]);
     else if (a.scroll) await page.evaluate((s) => document.querySelector(s)?.scrollIntoView(), a.scroll);
     else if (a.hover) await page.mouse.move(a.hover[0], a.hover[1]);
+    else if (a.eval) console.log(`[${sc.name}] eval: ${JSON.stringify(await page.evaluate(a.eval))}`);
     else if (a.probe) {
       for (let k = 0; k < 4; k++) {
         const r = await page.evaluate(() => { const h = document.querySelector('.s3d'); const c = h?.querySelector('canvas');

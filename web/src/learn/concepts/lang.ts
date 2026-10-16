@@ -1,6 +1,6 @@
 // 프로그래밍 언어 기초: 코드 문제를 풀 때 옆에서 확인하는 문법 그림
-import { board } from '../templates/board';
-import { fields } from '../templates/fields';
+import { board } from '../three/adapt';
+import { fields } from '../three/adapt';
 import { stack } from '../core';
 import type { Concept } from './types';
 

@@ -1,7 +1,7 @@
 // 데이터베이스·SQL·자료구조 개념
-import { board } from '../templates/board';
-import { ladder } from '../templates/ladder';
-import { seq } from '../templates/seq';
+import { board } from '../three/adapt';
+import { ladder } from '../three/adapt';
+import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { joinLab, relAlgLab } from '../three/joinLab';
 import { integrityLab, keysLab, relTermsLab } from '../three/dbLabs';

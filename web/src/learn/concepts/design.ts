@@ -1,7 +1,7 @@
 // 소프트웨어 설계 개념
-import { board } from '../templates/board';
-import { graph } from '../templates/graph';
-import { ladder } from '../templates/ladder';
+import { board } from '../three/adapt';
+import { graph } from '../three/adapt';
+import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
 import type { Concept } from './types';
 import { COHESION, COUPLING } from '../scenes/design';

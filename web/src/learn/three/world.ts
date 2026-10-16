@@ -36,6 +36,9 @@ export class World {
   private raf = 0;
   private alive = true;
   private readonly ro: ResizeObserver;
+  private readonly io: IntersectionObserver;
+  /** 화면에 보이는가 (안 보이면 그리지 않는다) */
+  private seen = true;
   private readonly offTheme: () => void;
   private readonly texs = new Set<Tex>();
   private readonly ray = new Raycaster();
@@ -48,6 +51,7 @@ export class World {
 
   constructor(height = 440) {
     this.el = el('div', 'world3d');
+    (this.el as unknown as { world: World }).world = this;
     this.el.style.height = `${height}px`;
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -78,13 +82,15 @@ export class World {
     this.paintTheme();
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(this.el);
+    this.io = new IntersectionObserver((es) => { this.seen = es.some((e) => e.isIntersecting); });
+    this.io.observe(this.el);
     this.offTheme = onTheme(() => { this.pal = isDark() ? DARK : LIGHT; this.paintTheme(); this.onRepaint?.(); });
     this.resize();
     this.listen();
     const loop = () => {
       if (!this.alive) return;
       this.raf = requestAnimationFrame(loop);
-      if (!this.el.isConnected || document.hidden) return;
+      if (!this.el.isConnected || document.hidden || !this.seen) return;
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
     };
@@ -148,7 +154,7 @@ export class World {
   /** x0~x1, z0~z1 범위가 화면에 다 들어오게 카메라를 옮긴다 */
   fit(x0: number, x1: number, z0: number, z1: number, ms = 800) {
     const half = Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * this.camera.aspect);
-    const d = Math.max(7, ((x1 - x0) / 2 / Math.tan(half)) * 1.45, (z1 - z0) * 1.3);
+    const d = Math.max(7, ((x1 - x0) / 2 / Math.tan(half)) * 1.4, (z1 - z0) * 1.08);
     this.look(new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.4), d, ms);
   }
 
@@ -357,6 +363,7 @@ export class World {
     this.alive = false;
     cancelAnimationFrame(this.raf);
     this.ro.disconnect();
+    this.io.disconnect();
     this.offTheme();
     this.remove(this.scene);
     for (const t of this.texs) release(t);
@@ -365,5 +372,7 @@ export class World {
     this.ball.dispose();
     this.controls.dispose();
     this.renderer.dispose();
+    // WebGL 문맥은 브라우저마다 개수 제한이 있어 바로 돌려준다
+    this.renderer.forceContextLoss();
   }
 }

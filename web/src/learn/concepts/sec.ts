@@ -1,7 +1,7 @@
 // 보안·신기술 개념
-import { board } from '../templates/board';
-import { ladder } from '../templates/ladder';
-import { seq } from '../templates/seq';
+import { board } from '../three/adapt';
+import { ladder } from '../three/adapt';
+import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
 import type { Concept } from './types';
 import { ACCESS, CIA, MALWARE } from '../scenes/sec';
