@@ -3,6 +3,7 @@ import { board } from '../three/adapt';
 import { graph } from '../three/adapt';
 import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
+import { gofLab } from '../three/gofLab';
 import type { Concept } from './types';
 import { COHESION, COUPLING } from '../scenes/design';
 
@@ -49,7 +50,7 @@ export const DESIGN: Concept[] = [
     id: 'gof', name: 'GoF 디자인 패턴', en: 'Design Patterns (23)', cat: 'design',
     summary: '생성(객체를 만드는 법) 5, 구조(조합하는 법) 7, 행위(책임과 소통) 11. "분류 연습"으로 직접 나눠 보세요.',
     match: ['디자인 패턴', 'GoF', '싱글톤', '싱글턴', '팩토리', '빌더', '프로토타입', '어댑터', '브리지', '컴포지트', '데코레이터', '퍼사드', '플라이웨이트', '프록시', '옵저버', '전략', '커맨드', '반복자', '방문자', '중재자', '메멘토', '템플릿 메서드', '책임 연쇄', '인터프리터', 'Singleton', 'Observer', 'Adapter', 'Proxy', 'Visitor', 'Iterator', 'Bridge', 'Factory', '생성 패턴', '구조 패턴', '행위 패턴'],
-    make: board({ title: 'GoF 디자인 패턴 23가지', en: 'Gang of Four', groups: [
+    make: () => stack([gofLab(), board({ title: 'GoF 디자인 패턴 23가지', en: 'Gang of Four', groups: [
       { name: '생성 패턴', en: 'Creational', hue: 140, desc: '객체를 "만드는" 방법을 캡슐화한다 (5)', items: [
         { name: '추상 팩토리', en: 'Abstract Factory', desc: '관련 객체들의 묶음(제품군)을 구체 클래스 없이 한 번에 만든다' },
         { name: '빌더', en: 'Builder', desc: '복잡한 객체를 단계별로 조립한다' },
@@ -76,7 +77,7 @@ export const DESIGN: Concept[] = [
         { name: '전략', en: 'Strategy', desc: '알고리즘을 캡슐화해 실행 중에 바꿔 끼운다' },
         { name: '템플릿 메서드', en: 'Template Method', desc: '뼈대는 상위에서, 세부 단계는 하위에서' },
         { name: '방문자', en: 'Visitor', desc: '원소 클래스를 고치지 않고 새 연산을 추가' }] },
-    ] }),
+    ] })()]),
   },
   {
     id: 'uml', name: 'UML', en: 'Unified Modeling Language', cat: 'design',

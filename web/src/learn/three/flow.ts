@@ -179,7 +179,9 @@ export function flowLab(spec: FlowSpec): () => Viz {
     w.onRepaint = () => void draw({ ms: 0 });
     const fit = () => {
       if (spec.view) { const [a, z, c, d] = spec.view; w.fit(a, z, c, d); return; }
-      const xs = [...nodes.values()].map((n) => n.at[0]), zs = [...nodes.values()].map((n) => n.at[1]);
+      const vis = [...nodes.values()].filter((n) => !n.hidden);
+      const xs = vis.map((n) => n.at[0]), zs = vis.map((n) => n.at[1]);
+      if (!vis.length) return;
       w.fit(Math.min(...xs) - 1.8, Math.max(...xs) + 1.8, Math.min(...zs) - 2.2, Math.max(...zs) + 2.4);
     };
 
@@ -283,7 +285,7 @@ export function flowLab(spec: FlowSpec): () => Viz {
     async function play(sc: FScenario) {
       lines = [];
       marks = [];
-      if (!sc.keep) await restore(sc.set, sc.links);
+      if (!sc.keep) { await restore(sc.set, sc.links); if (!spec.view) fit(); }
       else for (const o of [...b.temp].filter((x) => !stays.has(x))) { b.temp.delete(o); w.remove(o); }
       if (sc.code !== undefined) l.code(sc.code);
       for (const st of sc.steps) await runStep(st);
