@@ -395,3 +395,43 @@ button.danger { border-color: var(--error); color: var(--error); }
 .modal-body > p { margin: 0; line-height: 1.6; }
 .modal-body .scene { max-width: none; }
 @media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+
+/* ── 3D 실습판 (learn/three/lab.ts) ── */
+.lab { gap: 8px; }
+.lab-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.lab-group { --h: 210; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 8px; border-radius: 10px; border: 1px solid hsl(var(--h) 60% 75%); background: hsl(var(--h) 80% 97%); }
+.lab-glabel { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: hsl(var(--h) 55% 35%); }
+.lab-glabel span { color: var(--muted); font-size: 11px; }
+.lab-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.lab-btn { font-weight: 700; font-size: 12.5px; padding: 5px 10px; border-radius: 7px; border: 1px solid hsl(var(--h, 210) 55% 70%); background: var(--panel); color: hsl(var(--h, 210) 60% 32%); font-family: var(--mono); cursor: pointer; }
+.lab-btn:hover { background: hsl(var(--h, 210) 85% 93%); }
+.lab-btn.open { background: hsl(var(--h, 210) 65% 45%); border-color: hsl(var(--h, 210) 65% 45%); color: #fff; }
+.lab-btn.focus { box-shadow: 0 0 0 2px var(--glow, #f59e0b); }
+.lab-sub { --h: 210; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px; background: hsl(var(--h) 80% 96%); border: 1px dashed hsl(var(--h) 55% 70%); animation: lab-drop 0.18s ease-out; }
+.lab-sublabel { font-weight: 800; font-size: 12.5px; color: hsl(var(--h) 55% 35%); font-family: var(--mono); }
+.lab-subnone { color: var(--muted); font-size: 12.5px; }
+@keyframes lab-drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.lab.busy .lab-btn, .lab.busy .lab-reset { opacity: 0.55; pointer-events: none; }
+.world3d { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.world3d canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.world3d-help { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.lab-code { position: absolute; left: 10px; top: 10px; margin: 0; max-width: calc(100% - 20px); padding: 8px 12px; border-radius: 9px; background: rgba(20, 24, 32, 0.86); color: #e6e8ec; font: 600 13px/1.5 var(--mono); white-space: pre; overflow-x: auto; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
+.lab-code.lab-new { animation: lab-drop 0.25s ease-out; }
+.lab-kw { color: #c4b5fd; } .lab-str { color: #fcd34d; } .lab-num { color: #5eead4; } .lab-cm { color: #8b93a1; font-weight: 400; }
+.lab-say { position: absolute; left: 10px; right: 10px; bottom: 26px; padding: 8px 12px; border-radius: 9px; font-size: 13.5px; line-height: 1.5; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-left: 4px solid var(--accent); pointer-events: none; }
+.lab-say.ok { border-left-color: #16a34a; }
+.lab-say.bad { border-left-color: #dc2626; background: color-mix(in srgb, var(--error-soft) 92%, transparent); }
+.lab-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.lab-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.lab-chip.warn { background: var(--changed); color: var(--changed-line); }
+.lab-chip.muted { background: transparent; border: 1px solid var(--line); color: var(--muted); font-weight: 600; }
+.lab-reset { font-size: 12.5px; }
+:root[data-theme="dark"] .lab-group { background: hsl(var(--h) 30% 12%); border-color: hsl(var(--h) 35% 30%); }
+:root[data-theme="dark"] .lab-glabel { color: hsl(var(--h) 70% 72%); }
+:root[data-theme="dark"] .lab-btn { color: hsl(var(--h, 210) 75% 75%); border-color: hsl(var(--h, 210) 35% 38%); }
+:root[data-theme="dark"] .lab-btn:hover { background: hsl(var(--h, 210) 35% 20%); }
+:root[data-theme="dark"] .lab-btn.open { background: hsl(var(--h, 210) 60% 45%); color: #fff; }
+:root[data-theme="dark"] .lab-sub { background: hsl(var(--h) 30% 12%); border-color: hsl(var(--h) 35% 35%); }
+:root[data-theme="dark"] .lab-sublabel { color: hsl(var(--h) 70% 72%); }
+@media (max-width: 640px) { .lab-code { font-size: 11.5px; } .lab-say { font-size: 12.5px; } }

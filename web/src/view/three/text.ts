@@ -86,21 +86,23 @@ export function label(runs: Run[], bg?: string): Tex {
   });
 }
 
-/** 정육면체 한 면에 들어갈 값. 길면 글자를 줄이고 그래도 길면 자른다 */
-export function face(text: string, color: string): Tex {
-  return make(`F${color}|${text}`, () => {
+/** 정육면체 한 면에 들어갈 값. 길면 글자를 줄이고 그래도 길면 자른다. aspect: 면의 너비/높이(납작한 블록용) */
+export function face(text: string, color: string, aspect = 1): Tex {
+  const a = Math.round(Math.max(1, Math.min(6, aspect)) * 4) / 4;
+  return make(`F${color}|${a}|${text}`, () => {
     const c = document.createElement('canvas');
-    c.width = c.height = 256;
+    c.width = Math.round(256 * a);
+    c.height = 256;
     const g = c.getContext('2d')!;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillStyle = color;
     let size = 104;
     let t = text;
-    const fits = () => { g.font = `700 ${size}px ${MONO}`; return g.measureText(t).width <= 224; };
+    const fits = () => { g.font = `700 ${size}px ${MONO}`; return g.measureText(t).width <= c.width - 32; };
     while (!fits() && size > 40) size -= 6;
     while (!fits() && t.length > 2) t = `${t.slice(0, -2)}…`;
-    g.fillText(t, 128, 136);
+    g.fillText(t, c.width / 2, 136);
     return c;
   });
 }

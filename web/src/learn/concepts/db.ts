@@ -5,6 +5,7 @@ import { seq } from '../templates/seq';
 import { stack, tabs } from '../core';
 import { joins, keys, relAlgebra, relTerms } from '../custom/db';
 import { hashTable } from '../custom/misc';
+import { sqlLab } from '../three/sqlLab';
 import { notationViz, treeViz } from '../custom/sims';
 import type { Concept } from './types';
 
@@ -159,12 +160,12 @@ export const DB: Concept[] = [
     id: 'sqlcmd', name: 'SQL 명령어 분류', en: 'DDL · DML · DCL · TCL', cat: 'sql',
     summary: '정의어(CREATE·ALTER·DROP), 조작어(SELECT·INSERT·UPDATE·DELETE), 제어어(GRANT·REVOKE), 트랜잭션 제어(COMMIT·ROLLBACK).',
     match: ['DDL', 'DML', 'DCL', 'TCL', 'GRANT', 'REVOKE', 'CREATE', 'ALTER', 'DROP', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'DOMAIN', 'CHECK'],
-    make: board({ title: 'SQL 명령어 분류', groups: [
+    make: () => stack([sqlLab(), board({ title: 'SQL 명령어 분류', groups: [
       { name: 'DDL 정의어', en: 'Data Definition', hue: 210, items: [{ name: 'CREATE', desc: 'TABLE·VIEW·INDEX·DOMAIN 만들기' }, { name: 'ALTER', desc: 'ALTER TABLE 학생 ADD 주소 VARCHAR(50)' }, { name: 'DROP', desc: 'DROP TABLE 학생 CASCADE | RESTRICT' }, { name: 'TRUNCATE', desc: '모든 행 삭제(구조는 남김, 되돌릴 수 없음)' }] },
       { name: 'DML 조작어', en: 'Data Manipulation', hue: 30, items: [{ name: 'SELECT', desc: 'SELECT 열 FROM 표 WHERE 조건' }, { name: 'INSERT', desc: 'INSERT INTO 표 VALUES (…)' }, { name: 'UPDATE', desc: 'UPDATE 표 SET 열 = 값 WHERE 조건' }, { name: 'DELETE', desc: 'DELETE FROM 표 WHERE 조건' }] },
       { name: 'DCL 제어어', en: 'Data Control', hue: 140, items: [{ name: 'GRANT', desc: 'GRANT SELECT ON 학생 TO kim [WITH GRANT OPTION]' }, { name: 'REVOKE', desc: 'REVOKE SELECT ON 학생 FROM kim [CASCADE]' }] },
       { name: 'TCL 트랜잭션 제어', en: 'Transaction Control', hue: 280, items: [{ name: 'COMMIT', desc: '확정' }, { name: 'ROLLBACK', desc: '취소' }, { name: 'SAVEPOINT', desc: '되돌아갈 지점' }] },
-    ] }),
+    ] })()]),
   },
   {
     id: 'sqlorder', name: 'SELECT의 처리 순서', en: 'FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY', cat: 'sql',
