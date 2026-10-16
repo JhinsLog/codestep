@@ -418,9 +418,9 @@ button.danger { border-color: var(--error); color: var(--error); }
 .lab-code { position: absolute; left: 10px; top: 10px; margin: 0; max-width: calc(100% - 20px); padding: 8px 12px; border-radius: 9px; background: rgba(20, 24, 32, 0.86); color: #e6e8ec; font: 600 13px/1.5 var(--mono); white-space: pre; overflow-x: auto; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
 .lab-code.lab-new { animation: lab-drop 0.25s ease-out; }
 .lab-kw { color: #c4b5fd; } .lab-str { color: #fcd34d; } .lab-num { color: #5eead4; } .lab-cm { color: #8b93a1; font-weight: 400; }
-.lab-say { position: absolute; left: 10px; right: 10px; bottom: 26px; padding: 8px 12px; border-radius: 9px; font-size: 13.5px; line-height: 1.5; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-left: 4px solid var(--accent); pointer-events: none; }
+.lab-say { min-height: 2.6em; padding: 8px 12px; border-radius: 9px; font-size: 14px; line-height: 1.55; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); animation: lab-drop 0.2s ease-out; }
 .lab-say.ok { border-left-color: #16a34a; }
-.lab-say.bad { border-left-color: #dc2626; background: color-mix(in srgb, var(--error-soft) 92%, transparent); }
+.lab-say.bad { border-left-color: #dc2626; background: var(--error-soft); }
 .lab-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .lab-status { display: flex; flex-wrap: wrap; gap: 6px; }
 .lab-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }

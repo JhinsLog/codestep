@@ -3,10 +3,13 @@ import { board } from '../templates/board';
 import { ladder } from '../templates/ladder';
 import { seq } from '../templates/seq';
 import { stack, tabs } from '../core';
-import { joins, relAlgebra } from '../custom/db';
+import { joinLab, relAlgLab } from '../three/joinLab';
 import { integrityLab, keysLab, relTermsLab } from '../three/dbLabs';
 import { hashTable } from '../custom/misc';
 import { sqlLab } from '../three/sqlLab';
+import { normLab } from '../three/normLab';
+import { txLab } from '../three/txLab';
+import { orderLab } from '../three/orderLab';
 import { notationViz, treeViz } from '../custom/sims';
 import type { Concept } from './types';
 
@@ -21,7 +24,7 @@ export const DB: Concept[] = [
     id: 'relalg', name: '관계 대수', en: 'Relational Algebra', cat: 'db',
     summary: 'σ(행 고르기), π(열 고르기), ⋈(합치기), ÷(모두 가진 것)와 합·교·차집합, 카티션 곱. 절차적 언어이고, 비절차적인 것은 관계해석이다.',
     match: ['관계 대수', '관계대수', 'σ', 'π', '÷', '⋈', '디비전', '셀렉트', '프로젝트', '합집합', '교집합', '차집합', '카티션', '관계해석', '관계 해석'],
-    make: () => stack([relAlgebra(), board({ title: '관계대수와 관계해석', groups: [
+    make: () => stack([relAlgLab(), board({ title: '관계대수와 관계해석', groups: [
       { name: '관계대수', en: 'Relational Algebra', hue: 210, desc: '절차적: 결과를 "어떻게" 구하는지 연산 순서로 쓴다', items: [{ name: '순수 관계 연산', desc: 'σ 셀렉트, π 프로젝트, ⋈ 조인, ÷ 디비전' }, { name: '일반 집합 연산', desc: '∪ 합집합, ∩ 교집합, − 차집합, × 카티션 곱' }] },
       { name: '관계해석', en: 'Relational Calculus', hue: 30, desc: '비절차적: 결과가 "무엇"인지만 쓴다 (코드가 제안, 프레디킷 해석 기반)', items: [{ name: '튜플 관계해석' }, { name: '도메인 관계해석' }, { name: '∀ 모든 · ∃ 존재한다', desc: '정량자 기호를 쓴다' }] },
     ], quiz: false })()]),
@@ -30,7 +33,7 @@ export const DB: Concept[] = [
     id: 'joins', name: '조인', en: 'JOIN', cat: 'db',
     summary: '내부 조인은 양쪽에 짝이 있는 행만, 외부 조인은 짝이 없는 쪽도 NULL로 채워 남긴다. 세타·동등·자연 조인은 조건의 모양에 따른 구분이다.',
     match: ['JOIN', '조인', '세타', '동등 조인', '자연 조인', '외부 조인', 'INNER', 'OUTER', 'CROSS', 'Theta', 'Equi', 'Natural'],
-    make: () => stack([joins(), board({ title: '조건에 따른 조인 구분', groups: [
+    make: () => stack([joinLab(), board({ title: '조건에 따른 조인 구분', groups: [
       { name: '세타 조인', en: 'Theta Join', hue: 200, desc: '=, <, >, ≤, ≥, ≠ 같은 비교 연산자로 조인', items: [{ name: '동등 조인', en: 'Equi Join', desc: '세타 조인 중 = 만 쓴 것. 조인 속성이 결과에 두 번 나온다' }, { name: '자연 조인', en: 'Natural Join', desc: '동등 조인에서 중복 속성을 하나로 합친 것 (⋈)' }] },
       { name: '외부 조인', en: 'Outer Join', hue: 30, items: [{ name: 'LEFT' }, { name: 'RIGHT' }, { name: 'FULL' }] },
     ], quiz: false })()]),
@@ -45,7 +48,7 @@ export const DB: Concept[] = [
     id: 'normalization', name: '정규화와 이상 현상', en: 'Normalization · Anomaly', cat: 'db',
     summary: '중복 때문에 생기는 이상 현상(삽입·삭제·갱신)을 없애려고 릴레이션을 나눈다. 1NF → 2NF(부분 종속 제거) → 3NF(이행 종속 제거) → BCNF …',
     match: ['정규형', '정규화', '함수 종속', '부분 함수', '이행', 'BCNF', '이상 현상', '삽입 이상', '삭제 이상', '갱신 이상', '반정규화', '역정규화', '1NF', '2NF', '3NF', 'Anomaly'],
-    make: () => tabs([
+    make: () => stack([normLab(), tabs([
       { name: '정규화 계단', make: ladder({ title: '정규화 단계', en: 'Normal Form', top: '아래 단계부터 하나씩', bottom: '위로 갈수록 중복이 적다', shape: 'stairs', hue: [200, 140],
         items: [
           { name: '제1정규형', en: '1NF', tag: '도메인이 원자값', desc: '모든 속성 값이 더 나눌 수 없는 원자값이다. "취미: 축구, 독서"처럼 한 칸에 여러 값이 있으면 안 된다.' },
@@ -66,13 +69,13 @@ export const DB: Concept[] = [
         { name: '이행 함수 종속', en: 'Transitive', hue: 0, items: [{ name: '학번 → 학과 → 학과장', desc: '다른 속성을 거쳐 결정 → 3NF에서 제거' }] },
         { name: '반정규화', en: 'Denormalization', hue: 270, desc: '성능을 위해 일부러 정규화를 되돌림', items: [{ name: '테이블 통합·분할', desc: '조인을 줄이려고 합치거나, 행(수평)·열(수직)로 나눈다' }, { name: '중복 테이블·속성 추가', desc: '집계 테이블, 자주 쓰는 속성을 중복 저장' }, { name: '대가', desc: '조회는 빨라지지만 무결성(일관성) 유지가 어려워진다' }] },
       ], quiz: false }) },
-    ]),
+    ])]),
   },
   {
     id: 'transaction', name: '트랜잭션과 회복', en: 'Transaction · ACID · Recovery', cat: 'db',
     summary: '트랜잭션은 한꺼번에 처리되어야 하는 작업 단위. ACID를 지키며, 장애가 나면 로그로 REDO(다시 반영)·UNDO(되돌리기)한다.',
     match: ['트랜잭션', 'ACID', '원자성', '일관성', '독립성', '지속성', 'ROLLBACK', 'COMMIT', 'REDO', 'UNDO', '회복', '로킹', '병행 제어', '즉시 갱신', '지연 갱신', 'Atomicity', 'SAVEPOINT', '상호 배제'],
-    make: () => tabs([
+    make: () => stack([txLab(), tabs([
       { name: 'ACID', make: board({ title: '트랜잭션의 특성 ACID', groups: [
         { name: '원자성', en: 'Atomicity', hue: 0, items: [{ name: '전부 아니면 전무', desc: '모두 반영(COMMIT)되거나 하나도 반영되지 않는다(ROLLBACK)' }] },
         { name: '일관성', en: 'Consistency', hue: 60, items: [{ name: '규칙을 지킨 상태 유지', desc: '실행 전후 모두 무결성 제약을 만족한다' }] },
@@ -94,7 +97,7 @@ export const DB: Concept[] = [
         { name: '기법', hue: 220, items: [{ name: '즉시 갱신', en: 'Immediate Update', desc: '실행 중 바로 반영 → REDO + UNDO' }, { name: '지연 갱신', en: 'Deferred Update', desc: '커밋까지 미룸 → REDO만' }, { name: '그림자 페이징', desc: '로그 없이 그림자 페이지 테이블로 복구' }, { name: '검사점', en: 'Checkpoint', desc: '회복할 범위를 줄인다' }] },
         { name: '병행 제어', hue: 280, items: [{ name: '로킹', en: 'Locking', desc: '자료에 잠금을 걸어 상호 배제 (단위가 크면 관리 쉽고 병행성 낮음)' }, { name: '2단계 로킹', desc: '확장 단계(잠금만) → 축소 단계(해제만)' }, { name: '타임스탬프', desc: '시작 시각 순서로 처리' }] },
       ], quiz: false }) },
-    ]),
+    ])]),
   },
   {
     id: 'integrity', name: '무결성 제약 조건', en: 'Integrity Constraint', cat: 'db',
@@ -172,14 +175,14 @@ export const DB: Concept[] = [
     id: 'sqlorder', name: 'SELECT의 처리 순서', en: 'FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY', cat: 'sql',
     summary: 'SELECT는 쓰는 순서와 처리 순서가 다르다. WHERE는 묶기 전의 행을, HAVING은 묶은 뒤의 그룹을 거른다.',
     match: ['GROUP BY', 'HAVING', 'ORDER BY', 'DISTINCT', 'LIKE', 'BETWEEN', '서브쿼리', 'COUNT', 'AVG', 'SUM', 'IN (', 'ALL', 'ANY', 'NULL'],
-    make: ladder({ title: 'SELECT 문의 처리 순서', en: 'Logical Query Processing', top: '먼저 처리', bottom: '나중에 처리', shape: 'stairs', hue: [200, 20], items: [
+    make: () => stack([orderLab(), ladder({ title: 'SELECT 문의 처리 순서', en: 'Logical Query Processing', top: '먼저 처리', bottom: '나중에 처리', shape: 'stairs', hue: [200, 20], items: [
       { name: 'FROM (JOIN)', desc: '어느 테이블에서 가져올지. 조인이 있으면 먼저 합친다.' },
       { name: 'WHERE', desc: '행 하나하나를 조건으로 거른다. 아직 묶기 전이라 집계 함수(COUNT, AVG)를 쓸 수 없다. AND가 OR보다 먼저 계산된다.' },
       { name: 'GROUP BY', desc: '같은 값끼리 묶는다.' },
       { name: 'HAVING', desc: '묶은 그룹을 조건으로 거른다. 집계 함수를 쓸 수 있다.' },
       { name: 'SELECT', desc: '보여 줄 열과 계산식. DISTINCT는 중복 행 제거. COUNT(열)은 NULL을 세지 않는다.' },
       { name: 'ORDER BY', desc: '마지막에 정렬. 기본 ASC(오름차순), DESC는 내림차순. SELECT의 별칭을 쓸 수 있다.' },
-    ], note: '조건 연산: LIKE(% 아무 글자 여러 개, _ 한 글자), BETWEEN a AND b(양 끝 포함), IN(…), > ALL(…)은 최댓값보다 큼, > ANY(…)는 최솟값보다 큼' }),
+    ], note: '조건 연산: LIKE(% 아무 글자 여러 개, _ 한 글자), BETWEEN a AND b(양 끝 포함), IN(…), > ALL(…)은 최댓값보다 큼, > ANY(…)는 최솟값보다 큼' })()]),
   },
   {
     id: 'hash', name: '해시 테이블', en: 'Hash Table', cat: 'ds',

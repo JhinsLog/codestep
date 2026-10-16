@@ -54,12 +54,12 @@ export function lab(o: { title: string; en?: string; height?: number; setup(l: L
   const codeEl = el('pre', 'lab-code');
   codeEl.hidden = true;
   const sayEl = el('div', 'lab-say');
-  world.el.append(codeEl, sayEl);
+  world.el.append(codeEl);
   const foot = el('div', 'lab-foot');
   const statusEl = el('div', 'lab-status');
   const resetBtn = el('button', 'lab-reset', '↺ 처음부터');
   foot.append(statusEl, resetBtn);
-  root.append(head, bar, subRow, world.el, foot);
+  root.append(head, bar, subRow, world.el, sayEl, foot);
 
   const api: Lab = {
     world,
