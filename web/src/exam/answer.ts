@@ -89,7 +89,7 @@ const squash = (s: string) => s.replace(/[\s,]+/g, '').replace(/[‘’'"]/g, ''
 
 /** 용어 비교용: 띄어쓰기·기호·대소문자를 지운다 */
 export const normTerm = (s: string) => s.toLowerCase().normalize('NFC')
-  .replace(/[\s,.·•\-_→⇒>~'"‘’“”`()[\]{}<]/g, '');
+  .replace(/[\s,.·•\-_→⇒>~'"‘’“”`()[\]{}</]/g, '');
 
 /** "~ 패턴", "~ 기법"처럼 붙여도 안 붙여도 되는 꼬리말 */
 const TAIL = /(패턴|pattern|기법|방식|공격|attack|프로토콜|protocol)$/;

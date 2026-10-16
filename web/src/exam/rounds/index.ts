@@ -5,6 +5,8 @@
 // 개념을 확인하지 못한 문항은 같은 시기 출제 경향으로 채우고 trend 표시를 했다.
 import type { Round } from '../problems';
 import { Y2026 } from './y2026';
+import { Y2025 } from './y2025';
+import { Y2024 } from './y2024';
 
 /** 최근 회차부터 */
-export const ROUNDS: Round[] = [...Y2026];
+export const ROUNDS: Round[] = [...Y2026, ...Y2025, ...Y2024];
