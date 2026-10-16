@@ -285,6 +285,7 @@ export function flowLab(spec: FlowSpec): () => Viz {
     async function play(sc: FScenario) {
       lines = [];
       marks = [];
+      l.code('');
       if (!sc.keep) { await restore(sc.set, sc.links); if (!spec.view) fit(); }
       else for (const o of [...b.temp].filter((x) => !stays.has(x))) { b.temp.delete(o); w.remove(o); }
       if (sc.code !== undefined) l.code(sc.code);

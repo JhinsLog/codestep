@@ -25,7 +25,7 @@ export const OS: Concept[] = [
           '다시 디스패치', '할 일을 모두 마치고 종료'] }] })(),
       board({ title: '프로세스 간 통신 (IPC)', en: 'Inter-Process Communication', groups: [
         { name: '공유 메모리', hue: 200, items: [{ name: '공유 메모리', en: 'Shared Memory', desc: '같은 메모리를 함께 쓴다. 빠르지만 동기화(세마포어)가 필요' }] },
-        { name: '메시지 전달', hue: 30, items: [{ name: '파이프', en: 'Pipe' }, { name: '메시지 큐', en: 'Message Queue' }, { name: '소켓', en: 'Socket', desc: '네트워크 너머의 프로세스와도' }, { name: '세마포어', en: 'Semaphore', desc: '동기화 신호' }] },
+        { name: '메시지 전달', hue: 30, items: [{ name: '파이프', en: 'Pipe', desc: '한쪽 프로세스의 출력을 다른 프로세스의 입력으로 잇는 단방향 통로 (ls | grep)' }, { name: '메시지 큐', en: 'Message Queue', desc: '프로세스들이 메시지를 큐에 넣고 꺼내 비동기로 주고받는다' }, { name: '소켓', en: 'Socket', desc: '네트워크 너머의 프로세스와도' }, { name: '세마포어', en: 'Semaphore', desc: '동기화 신호' }] },
       ], quiz: false })(),
     ]),
   },
@@ -38,7 +38,7 @@ export const OS: Concept[] = [
       { name: '선점·비선점', make: board({ title: '스케줄링 기법 분류', groups: [
         { name: '비선점', en: 'Non-preemptive', hue: 210, desc: '한번 CPU를 잡으면 끝날 때까지', items: [
           { name: 'FCFS', en: '선입선처리', desc: '먼저 온 순서. 긴 작업 뒤에 줄 서는 호위 효과' }, { name: 'SJF', en: '최단 작업 우선', desc: '실행 시간이 짧은 것 먼저. 긴 작업은 기아' },
-          { name: 'HRN', en: 'Highest Response ratio Next', desc: '(대기 + 서비스) / 서비스가 큰 것. 기아 방지' }, { name: '우선순위 (비선점)', desc: '' }] },
+          { name: 'HRN', en: 'Highest Response ratio Next', desc: '(대기 + 서비스) / 서비스가 큰 것. 기아 방지' }, { name: '우선순위 (비선점)', desc: '우선순위가 가장 높은 프로세스부터 실행하고, 실행 중에는 빼앗지 않는다. 낮은 순위는 기아 → 에이징으로 해결' }] },
         { name: '선점', en: 'Preemptive', hue: 0, desc: '더 급한 프로세스가 오면 빼앗는다', items: [
           { name: 'RR', en: '라운드 로빈', desc: '시간 할당량만큼 돌아가며' }, { name: 'SRT', en: 'Shortest Remaining Time', desc: '남은 시간이 가장 짧은 것' },
           { name: 'MLQ', en: '다단계 큐', desc: '큐를 여러 개, 큐 사이 이동 없음' }, { name: 'MLFQ', en: '다단계 피드백 큐', desc: '큐 사이 이동 가능' }] },

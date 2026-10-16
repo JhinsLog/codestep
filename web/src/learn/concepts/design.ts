@@ -4,6 +4,7 @@ import { graph } from '../three/adapt';
 import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { gofLab } from '../three/gofLab';
+import { dataNewLab, erLab, fileOrgLab, oopLab } from '../three/moreLabs';
 import type { Concept } from './types';
 import { COHESION, COUPLING } from '../scenes/design';
 
@@ -111,11 +112,11 @@ export const DESIGN: Concept[] = [
     match: ['요구사항', '기능 요구', '비기능', '기능적', '성능 요구', '요구 사항'],
     make: board({ title: '기능 요구사항과 비기능 요구사항', en: '항목을 섞어 직접 분류해 보세요', groups: [
       { name: '기능', en: 'Functional', hue: 140, desc: '사용자가 시스템으로 "할 수 있는 일"', items: [
-        { name: '회원은 장바구니에 상품을 담는다' }, { name: '관리자는 주문을 취소할 수 있다' }, { name: '검색어로 상품을 찾는다' }] },
-      { name: '성능', en: 'Performance', hue: 210, items: [{ name: '검색 응답 2초 이내' }, { name: '동시 접속 1,000명 처리' }] },
-      { name: '보안', en: 'Security', hue: 0, items: [{ name: '개인정보는 암호화해 저장' }, { name: '5회 틀리면 계정 잠금' }] },
-      { name: '운영', en: 'Operational', hue: 40, items: [{ name: '매일 새벽 자동 백업' }, { name: '관리 화면에서 서버 모니터링' }] },
-      { name: '자원', en: 'Resource', hue: 280, items: [{ name: '메모리 4GB 안에서 동작' }] },
+        { name: '회원은 장바구니에 상품을 담는다', desc: '기능 요구사항: 시스템이 "무엇을 하는가"(기능)를 말한다' }, { name: '관리자는 주문을 취소할 수 있다', desc: '기능 요구사항: 사용자가 할 수 있는 동작을 정의한다' }, { name: '검색어로 상품을 찾는다', desc: '기능 요구사항: 입력(검색어)에 대해 시스템이 수행할 동작이다' }] },
+      { name: '성능', en: 'Performance', hue: 210, items: [{ name: '검색 응답 2초 이내', desc: '비기능 요구사항(성능): 기능이 "얼마나 잘" 동작해야 하는지를 말한다' }, { name: '동시 접속 1,000명 처리', desc: '비기능 요구사항(성능·확장성): 처리량에 대한 제약이다' }] },
+      { name: '보안', en: 'Security', hue: 0, items: [{ name: '개인정보는 암호화해 저장', desc: '비기능 요구사항(보안): 기능이 아니라 품질·제약 조건이다' }, { name: '5회 틀리면 계정 잠금', desc: '기능 요구사항: 로그인 실패 횟수에 따라 시스템이 수행할 구체적 동작이다 (보안 목적이지만 동작을 정의)' }] },
+      { name: '운영', en: 'Operational', hue: 40, items: [{ name: '매일 새벽 자동 백업', desc: '기능 요구사항: 정해진 시각에 시스템이 수행할 동작이다 (가용성을 위한 기능)' }, { name: '관리 화면에서 서버 모니터링', desc: '기능 요구사항: 관리자가 사용하는 화면 기능이다' }] },
+      { name: '자원', en: 'Resource', hue: 280, items: [{ name: '메모리 4GB 안에서 동작', desc: '비기능 요구사항(제약 사항): 동작 환경·자원에 대한 제한이다' }] },
     ], note: '비기능 요구사항: 성능, 보안, 품질(신뢰성·사용성), 제약 사항, 운영, 자원, 인터페이스 …' }),
   },
   {
@@ -159,7 +160,7 @@ export const DESIGN: Concept[] = [
     id: 'oop', name: '객체지향 핵심', en: 'Class · Inheritance · Polymorphism', cat: 'java',
     summary: '오버로딩은 같은 이름·다른 매개변수(컴파일 때 결정), 오버라이딩은 부모 메서드를 자식이 다시 정의(실행 때 객체로 결정).',
     match: ['오버라이딩', '오버로딩', '상속', '다형성', '생성자', '추상 클래스', '인터페이스', '업캐스팅', '캡슐화', 'super', 'static'],
-    make: board({ title: '객체지향 핵심 개념', groups: [
+    make: () => stack([oopLab(), board({ title: '객체지향 핵심 개념', groups: [
       { name: '같은 이름, 다른 동작', hue: 210, items: [
         { name: '오버로딩', en: 'Overloading', desc: '한 클래스에서 이름은 같고 매개변수(개수·타입)가 다른 메서드들. 어느 것을 부를지는 "컴파일할 때" 인자 타입으로 정한다' },
         { name: '오버라이딩', en: 'Overriding', desc: '자식이 부모의 메서드를 같은 모양으로 다시 정의. 어느 것이 실행될지는 "실행할 때" 실제 객체로 정한다(동적 바인딩)' },
@@ -173,6 +174,6 @@ export const DESIGN: Concept[] = [
         { name: '인터페이스', en: 'interface', desc: '구현할 메서드 목록. implements로 구현, 여러 개 가능' },
         { name: '업캐스팅', desc: 'Parent p = new Child(); 부모 타입으로 자식 객체를 가리킨다' },
         { name: '캡슐화', en: 'Encapsulation', desc: '데이터와 기능을 묶고 private으로 내부를 숨긴다' }] },
-    ], quiz: false }),
+    ], quiz: false })()]),
   },
 ];

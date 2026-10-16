@@ -42,7 +42,7 @@ export function board(spec: BoardSpec): () => Viz {
         if (it.en) chip.append(el('span', 'board-en', it.en));
         chip.addEventListener('click', () => {
           if (!pool.hidden && chip.parentElement === pool) { select(chip); return; }
-          showWith(it.name, it.desc ?? `${g.name}에 속한다.`, it.en, it.scene);
+          showWith(it.name, it.desc ?? it.name, it.en, it.scene);
         });
         list.append(chip);
         chips.push({ chip, g: gi, it });
@@ -71,7 +71,7 @@ export function board(spec: BoardSpec): () => Viz {
         cols[gi]!.append(c.chip);
         c.chip.classList.add('right');
         left--;
-        detail.show(`✓ ${c.it.name}`, c.it.desc ?? `${spec.groups[gi]!.name}에 속한다.`, c.it.en);
+        detail.show(`✓ ${c.it.name}`, c.it.desc ?? c.it.name, c.it.en);
         if (!left) { detail.show('🎉 모두 분류했습니다', '다시 해 보려면 "분류 연습"을 한 번 더 누르세요.'); pool.hidden = true; }
       } else {
         c.chip.classList.remove('shake'); void c.chip.offsetWidth; c.chip.classList.add('shake');

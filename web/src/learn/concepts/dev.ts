@@ -15,7 +15,7 @@ export const DEV: Concept[] = [
     make: () => tabs([{ name: '스텁과 드라이버', make: integrationLab }, { name: 'V-모델', make: vModelLab }, { name: '인수 테스트', make: board({ title: '인수 테스트의 종류', groups: [
       { name: '알파 테스트', en: 'Alpha Test', hue: 210, items: [{ name: '개발자의 장소', desc: '사용자가 시험하고, 개발자가 옆에서 지켜보며 기록한다 (통제된 환경)' }] },
       { name: '베타 테스트', en: 'Beta Test', hue: 30, items: [{ name: '사용자의 실제 환경', desc: '개발자 없이 실제 사용자가 써 보고 문제를 보고한다' }] },
-      { name: '그 밖의 인수 테스트', hue: 140, items: [{ name: '사용자 인수' }, { name: '운영상 인수' }, { name: '계약 인수' }, { name: '규정 인수' }] },
+      { name: '그 밖의 인수 테스트', hue: 140, items: [{ name: '사용자 인수', desc: '사용자가 실제로 쓸 수 있는지(업무 흐름에 맞는지) 사용자가 직접 확인한다' }, { name: '운영상 인수', desc: '시스템 관리자가 백업·복구·유지보수 같은 운영 기능을 확인한다' }, { name: '계약 인수', desc: '계약서에 적힌 인수 조건과 요구사항을 만족하는지 확인한다' }, { name: '규정 인수', desc: '정부 지침·법규·안전 규정 같은 규정에 맞는지 확인한다' }] },
     ], quiz: false }) }]),
   },
   {
@@ -68,7 +68,7 @@ export const DEV: Concept[] = [
         { name: '참 오라클', en: 'True', desc: '모든 입력에 기대 결과를 제공' }, { name: '샘플링 오라클', en: 'Sampling', desc: '특정 몇 개의 입력에 대해서만' },
         { name: '추정 오라클', en: 'Heuristic', desc: '특정 입력은 정확히, 나머지는 추정' }, { name: '일관성 검사 오라클', en: 'Consistent', desc: '변경 전후 결과가 같은지' }] }], quiz: false }) },
       { name: '케이스·하네스', make: board({ title: '테스트 케이스와 하네스', groups: [
-        { name: '테스트 케이스', hue: 140, desc: 'IEEE 829', items: [{ name: '식별자' }, { name: '테스트 항목' }, { name: '테스트 조건', desc: '실행 전 갖춰야 할 상태' }, { name: '테스트 데이터', desc: '넣을 입력값' }, { name: '예상 결과', desc: '나와야 하는 출력' }] },
+        { name: '테스트 케이스', hue: 140, desc: 'IEEE 829', items: [{ name: '식별자', desc: '테스트 케이스마다 붙이는 고유 번호 (예: TC-001)' }, { name: '테스트 항목', desc: '무엇을 시험하는지: 대상 기능·모듈' }, { name: '테스트 조건', desc: '실행 전 갖춰야 할 상태' }, { name: '테스트 데이터', desc: '넣을 입력값' }, { name: '예상 결과', desc: '나와야 하는 출력' }] },
         { name: '테스트 하네스', hue: 280, items: [{ name: '테스트 드라이버', desc: '하위 모듈을 호출하는 상위 흉내' }, { name: '테스트 스텁', desc: '호출되는 하위 흉내' }, { name: '테스트 슈트', en: 'Suite', desc: '케이스들의 묶음' }, { name: '테스트 스크립트', desc: '실행 절차' }, { name: '목 오브젝트', en: 'Mock Object', desc: '정해진 행동을 하는 가짜 객체' }] },
         { name: '목적별 테스트', hue: 0, items: [{ name: '회귀 테스트', en: 'Regression', desc: '수정 후 새 오류가 생기지 않았는지' }, { name: '회복 테스트', desc: '고장을 내고 복구되는지' }, { name: '안전 테스트', desc: '보안' }, { name: '강도 테스트', en: 'Stress', desc: '과부하' }, { name: '성능 테스트', desc: '응답 시간·처리량' }, { name: '병행 테스트', desc: '새 시스템과 기존 시스템에 같은 데이터' }] },
       ] }) },
@@ -86,9 +86,9 @@ export const DEV: Concept[] = [
         { name: '형상 기록', desc: '변경 결과를 기록하고 보고한다 (상태 보고)' },
       ] })(),
       board({ title: '버전 관리 도구', groups: [
-        { name: '공유 폴더', hue: 40, items: [{ name: 'RCS' }, { name: 'SCCS' }] },
-        { name: '클라이언트/서버', hue: 210, desc: '중앙 저장소 하나', items: [{ name: 'CVS' }, { name: 'SVN', en: 'Subversion' }] },
-        { name: '분산 저장소', hue: 140, desc: '각자 전체 저장소 사본', items: [{ name: 'Git' }, { name: 'Mercurial' }] },
+        { name: '공유 폴더', hue: 40, items: [{ name: 'RCS', desc: 'Revision Control System: 파일 단위 잠금 방식의 초기 형상 관리 도구 (로컬)' }, { name: 'SCCS', desc: 'Source Code Control System: 가장 오래된 버전 관리 도구 중 하나, 델타로 변경분 저장' }] },
+        { name: '클라이언트/서버', hue: 210, desc: '중앙 저장소 하나', items: [{ name: 'CVS', desc: 'Concurrent Versions System: 중앙 서버 방식, 여러 사람이 동시에 작업. 파일 단위 관리' }, { name: 'SVN', en: 'Subversion', desc: 'Subversion: CVS를 개선한 중앙 집중형. 저장소 전체에 리비전 번호, 커밋은 서버로' }] },
+        { name: '분산 저장소', hue: 140, desc: '각자 전체 저장소 사본', items: [{ name: 'Git', desc: '분산형: 모든 개발자가 저장소 전체를 복제(로컬 커밋 → push). 브랜치가 가볍다' }, { name: 'Mercurial', desc: 'Git과 같은 분산형 버전 관리 도구 (hg 명령)' }] },
       ], quiz: false })(),
     ]),
   },
@@ -136,7 +136,7 @@ export const DEV: Concept[] = [
         { name: '경과 시간', en: 'Turnaround Time', desc: '작업을 맡기고 끝날 때까지' }, { name: '자원 사용률', en: 'Resource Usage', desc: 'CPU·메모리·네트워크 사용 정도' }] }], quiz: false }) },
       { name: '방법론·릴리즈', make: board({ title: '개발 방법론과 배포', groups: [
         { name: '방법론', hue: 30, items: [{ name: '폭포수', en: 'Waterfall', desc: '단계를 순서대로, 되돌아가기 어렵다' }, { name: '애자일', en: 'Agile', desc: '짧은 주기로 반복·점진, 고객과 협력, 변화에 대응' }, { name: '스크럼', en: 'Scrum', desc: '스프린트(2~4주), 백로그, 일일 회의' }, { name: 'XP', en: 'eXtreme Programming', desc: '짝 프로그래밍, 테스트 먼저, 잦은 배포' }] },
-        { name: '릴리즈 노트', hue: 140, items: [{ name: '헤더', desc: '문서·제품 이름, 버전, 날짜' }, { name: '개요·목적' }, { name: '이슈 요약', desc: '수정한 버그, 추가 기능' }, { name: '재현 항목·수정 내용' }, { name: '면책 조항' }, { name: '연락처' }] },
+        { name: '릴리즈 노트', hue: 140, items: [{ name: '헤더', desc: '문서·제품 이름, 버전, 날짜' }, { name: '개요·목적', desc: '릴리즈 노트 첫 부분: 제품 이름·버전·배포 목적을 적는다' }, { name: '이슈 요약', desc: '수정한 버그, 추가 기능' }, { name: '재현 항목·수정 내용', desc: '고친 오류를 어떻게 재현했는지와 무엇을 고쳤는지 적는다' }, { name: '면책 조항', desc: '회사·표준 제품 관련 법적 고지, 사용 조건을 적는다' }, { name: '연락처', desc: '문의·지원을 받을 담당자 연락 정보를 적는다' }] },
         { name: '재해 복구', hue: 0, items: [{ name: 'RTO', en: 'Recovery Time Objective', desc: '언제까지 복구할지 (시간)' }, { name: 'RPO', en: 'Recovery Point Objective', desc: '어느 시점 데이터까지 되살릴지' }] },
       ], quiz: false }) },
     ]),

@@ -10,6 +10,7 @@ import { normLab } from '../three/normLab';
 import { txLab } from '../three/txLab';
 import { orderLab } from '../three/orderLab';
 import { hashLab, notationLab, treeLab } from '../three/dsLabs';
+import { dataNewLab, erLab, fileOrgLab, oopLab } from '../three/moreLabs';
 import type { Concept } from './types';
 
 export const DB: Concept[] = [
@@ -25,7 +26,7 @@ export const DB: Concept[] = [
     match: ['관계 대수', '관계대수', 'σ', 'π', '÷', '⋈', '디비전', '셀렉트', '프로젝트', '합집합', '교집합', '차집합', '카티션', '관계해석', '관계 해석'],
     make: () => stack([relAlgLab(), board({ title: '관계대수와 관계해석', groups: [
       { name: '관계대수', en: 'Relational Algebra', hue: 210, desc: '절차적: 결과를 "어떻게" 구하는지 연산 순서로 쓴다', items: [{ name: '순수 관계 연산', desc: 'σ 셀렉트, π 프로젝트, ⋈ 조인, ÷ 디비전' }, { name: '일반 집합 연산', desc: '∪ 합집합, ∩ 교집합, − 차집합, × 카티션 곱' }] },
-      { name: '관계해석', en: 'Relational Calculus', hue: 30, desc: '비절차적: 결과가 "무엇"인지만 쓴다 (코드가 제안, 프레디킷 해석 기반)', items: [{ name: '튜플 관계해석' }, { name: '도메인 관계해석' }, { name: '∀ 모든 · ∃ 존재한다', desc: '정량자 기호를 쓴다' }] },
+      { name: '관계해석', en: 'Relational Calculus', hue: 30, desc: '비절차적: 결과가 "무엇"인지만 쓴다 (코드가 제안, 프레디킷 해석 기반)', items: [{ name: '튜플 관계해석', desc: '원하는 튜플이 만족할 조건을 술어(프레디킷)로 쓴다. 예: { t | t ∈ 학생 ∧ t.학과 = \'컴공\' }' }, { name: '도메인 관계해석', desc: '튜플 대신 속성 값(도메인 변수)을 단위로 조건을 쓴다. 예: { 이름 | ∃학번 (학생(학번, 이름, \'컴공\')) }' }, { name: '∀ 모든 · ∃ 존재한다', desc: '정량자 기호를 쓴다' }] },
     ], quiz: false })()]),
   },
   {
@@ -34,7 +35,7 @@ export const DB: Concept[] = [
     match: ['JOIN', '조인', '세타', '동등 조인', '자연 조인', '외부 조인', 'INNER', 'OUTER', 'CROSS', 'Theta', 'Equi', 'Natural'],
     make: () => stack([joinLab(), board({ title: '조건에 따른 조인 구분', groups: [
       { name: '세타 조인', en: 'Theta Join', hue: 200, desc: '=, <, >, ≤, ≥, ≠ 같은 비교 연산자로 조인', items: [{ name: '동등 조인', en: 'Equi Join', desc: '세타 조인 중 = 만 쓴 것. 조인 속성이 결과에 두 번 나온다' }, { name: '자연 조인', en: 'Natural Join', desc: '동등 조인에서 중복 속성을 하나로 합친 것 (⋈)' }] },
-      { name: '외부 조인', en: 'Outer Join', hue: 30, items: [{ name: 'LEFT' }, { name: 'RIGHT' }, { name: 'FULL' }] },
+      { name: '외부 조인', en: 'Outer Join', hue: 30, items: [{ name: 'LEFT', desc: '왼쪽 테이블의 행은 모두 남기고, 오른쪽에 짝이 없으면 NULL로 채운다' }, { name: 'RIGHT', desc: '오른쪽 테이블의 행은 모두 남기고, 왼쪽에 짝이 없으면 NULL로 채운다' }, { name: 'FULL', desc: '양쪽 테이블의 행을 모두 남기고, 짝이 없는 쪽은 NULL로 채운다 (LEFT ∪ RIGHT)' }] },
     ], quiz: false })()]),
   },
   {
@@ -141,23 +142,23 @@ export const DB: Concept[] = [
     id: 'er', name: 'E-R 다이어그램', en: 'Entity-Relationship Diagram', cat: 'db',
     summary: '피터 첸의 표기: 사각형 개체, 마름모 관계, 타원 속성. 이중 사각형은 약한 개체, 이중 타원은 다중값 속성.',
     match: ['E-R', 'ER 다이어그램', '약한 개체', '다중값', '개체 타입'],
-    make: board({ title: 'E-R 다이어그램 기호 (피터 첸)', groups: [
+    make: () => stack([erLab(), board({ title: 'E-R 다이어그램 기호 (피터 첸)', groups: [
       { name: '기본', hue: 210, items: [{ name: '□ 사각형 = 개체', en: 'Entity', desc: '학생, 과목처럼 저장할 대상' }, { name: '◇ 마름모 = 관계', en: 'Relationship', desc: '수강하다' }, { name: '○ 타원 = 속성', en: 'Attribute', desc: '이름, 학번' }, { name: '─ 선 = 연결', desc: '개체와 속성, 개체와 관계를 잇는다' }] },
-      { name: '특수', hue: 30, items: [{ name: '이중 사각형 = 약한 개체', en: 'Weak Entity', desc: '스스로는 식별하지 못하는 개체' }, { name: '이중 마름모 = 식별 관계', desc: '약한 개체와의 관계' }, { name: '이중 타원 = 다중값 속성', desc: '전화번호 여러 개' }, { name: '밑줄 타원 = 기본키 속성', desc: '' }, { name: '점선 타원 = 유도 속성', desc: '생일로 계산하는 나이' }] },
-    ], quiz: false }),
+      { name: '특수', hue: 30, items: [{ name: '이중 사각형 = 약한 개체', en: 'Weak Entity', desc: '스스로는 식별하지 못하는 개체' }, { name: '이중 마름모 = 식별 관계', desc: '약한 개체와의 관계' }, { name: '이중 타원 = 다중값 속성', desc: '전화번호 여러 개' }, { name: '밑줄 타원 = 기본키 속성', desc: '속성 이름에 밑줄을 그은 타원은 개체를 유일하게 구별하는 기본키 속성이다 (예: 학번)' }, { name: '점선 타원 = 유도 속성', desc: '생일로 계산하는 나이' }] },
+    ], quiz: false })()]),
   },
   {
     id: 'fileorg', name: '파일 편성과 인덱스·뷰', en: 'File Organization · Index · View', cat: 'db',
     summary: '순차·색인 순차·직접(해싱) 파일. 인덱스는 검색을 빠르게, 뷰는 저장하지 않는 가상 테이블이다.',
     match: ['파일 편성', '순차 파일', '색인 순차', 'ISAM', '오버플로', '직접 파일', '파일 구조', '인덱스', 'INDEX', '뷰', 'VIEW', '가상 테이블'],
-    make: board({ title: '파일 편성과 데이터베이스 객체', groups: [
+    make: () => stack([fileOrgLab(), board({ title: '파일 편성과 데이터베이스 객체', groups: [
       { name: '파일 편성', hue: 210, items: [
         { name: '순차 파일', en: 'Sequential', desc: '키 순서대로 저장, 처음부터 차례로 읽는다' },
         { name: '색인 순차 파일', en: 'ISAM', desc: '기본 구역 + 색인 구역 + 오버플로 구역. 순차·직접 접근 모두' },
         { name: '직접 파일', en: 'Hashing', desc: '해시 함수로 주소를 계산해 바로 접근' }] },
       { name: '인덱스', en: 'Index', hue: 30, items: [{ name: 'CREATE INDEX 이름 ON 테이블(열)', desc: '검색은 빨라지고, 삽입·수정·삭제는 인덱스도 고쳐야 해서 느려진다' }, { name: 'B-트리', desc: '대부분의 DBMS가 쓰는 균형 트리 인덱스' }] },
       { name: '뷰', en: 'View', hue: 140, items: [{ name: '가상 테이블', desc: '기본 테이블에서 유도, 물리적으로 저장하지 않는다' }, { name: '보안·편의', desc: '필요한 열만 보여 주고 복잡한 조인을 숨긴다' }, { name: '한계', desc: 'ALTER로 바꿀 수 없고(지우고 다시 만듦), 인덱스를 따로 만들 수 없다' }] },
-    ], quiz: false }),
+    ], quiz: false })()]),
   },
   {
     id: 'sqlcmd', name: 'SQL 명령어 분류', en: 'DDL · DML · DCL · TCL', cat: 'sql',
@@ -199,10 +200,10 @@ export const DB: Concept[] = [
     id: 'datanew', name: '데이터 신기술', en: 'Big Data · Mining · Blockchain', cat: 'db',
     summary: '대용량 데이터를 나눠 저장·처리하는 하둡, 숨은 규칙을 찾는 데이터 마이닝, 위·변조가 어려운 분산 장부 블록체인 등.',
     match: ['데이터 마이닝', '하둡', 'Hadoop', 'LOD', '다크 데이터', '블록체인', '빅데이터', '맵리듀스', 'OLAP', 'Linked Open Data'],
-    make: board({ title: '데이터 신기술', groups: [
+    make: () => stack([dataNewLab(), board({ title: '데이터 신기술', groups: [
       { name: '빅데이터', hue: 200, items: [{ name: '하둡', en: 'Hadoop', desc: '여러 컴퓨터로 대용량 데이터를 분산 저장(HDFS)·처리(맵리듀스)하는 오픈소스' }, { name: '맵리듀스', en: 'MapReduce', desc: '나눠서 처리(Map)하고 모아서 합친다(Reduce)' }, { name: '스쿱', en: 'Sqoop', desc: '관계형 DB ↔ 하둡 데이터 이동' }] },
       { name: '분석', hue: 30, items: [{ name: '데이터 마이닝', en: 'Data Mining', desc: '대량 데이터에서 숨은 규칙·패턴(연관, 분류, 군집)을 찾는다' }, { name: 'OLAP', desc: '다차원 데이터를 대화식으로 분석 (드릴다운, 롤업, 슬라이스)' }, { name: '다크 데이터', en: 'Dark Data', desc: '모아 두기만 하고 활용하지 않는 데이터' }] },
       { name: '공유·신뢰', hue: 140, items: [{ name: 'LOD', en: 'Linked Open Data', desc: '공개된 데이터를 URI로 연결해 공유 (시맨틱 웹)' }, { name: '블록체인', en: 'Blockchain', desc: '거래 블록을 해시로 사슬처럼 연결한 분산 원장. 한 블록을 고치면 뒤의 해시가 모두 깨진다' }] },
-    ] }),
+    ] })()]),
   },
 ];

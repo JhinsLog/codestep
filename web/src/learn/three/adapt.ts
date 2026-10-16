@@ -214,7 +214,7 @@ export function board(spec: BoardSpec): () => Viz {
       // 퀴즈: 섞인 순서, 놓인 것, 지금 문제
       let quiz: { order: typeof all; placed: Set<string>; cur: number } | null = null;
       const poolPos = (j: number) => V(-((Math.min(6, all.length) - 1) * (IW + 0.15)) / 2 + (j % 6) * (IW + 0.15), 0.14, zEnd + 0.4 + Math.floor(j / 6) * (ID + 0.2));
-      const itemInfo = (gi: number, ii: number): Info => { const it = G[gi]!.items[ii]!; return { title: it.name, sub: [it.en, G[gi]!.name].filter(Boolean).join(' · '), body: it.desc ?? `${G[gi]!.name}에 속합니다.` }; };
+      const itemInfo = (gi: number, ii: number): Info => { const it = G[gi]!.items[ii]!; return { title: it.name, sub: [it.en, G[gi]!.name].filter(Boolean).join(' · '), body: it.desc ?? `${it.name}${it.en ? ` (${it.en})` : ''}` }; };
       const groupInfo = (gi: number): Info => ({ title: G[gi]!.name, sub: G[gi]!.en, body: G[gi]!.desc ?? G[gi]!.items.map((i) => i.name).join(', ') });
       function want(): Want[] {
         const P = w.pal;
@@ -242,7 +242,7 @@ export function board(spec: BoardSpec): () => Viz {
       const show = (gi: number, ii: number) => {
         const it = G[gi]!.items[ii]!;
         void hopAll(w, [k.get(`i:${gi}:${ii}`)], 0.4, 450);
-        l.say(`${it.name}${it.en ? ` (${it.en})` : ''} — ${it.desc ?? G[gi]!.name}`, 'info');
+        l.say(`${it.name}${it.en ? ` (${it.en})` : ''}${it.desc ? ` — ${it.desc}` : ''}`, 'info');
         if (it.scene) openModal(it.name, [it.scene(), it.desc ?? ''], it.en);
       };
       w.onPick = (inf, o) => {

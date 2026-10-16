@@ -2,6 +2,7 @@
 import { board } from '../three/adapt';
 import { fields } from '../three/adapt';
 import { stack } from '../core';
+import { protocolLab } from '../three/protocolLab';
 import type { Concept } from './types';
 
 export const LANG: Concept[] = [
@@ -41,7 +42,7 @@ export const LANG: Concept[] = [
       board({ title: '자료형별 주요 메서드', groups: [
         { name: '리스트 list [ ]', hue: 210, items: [{ name: 'append(x)', desc: '끝에 하나 추가' }, { name: 'extend(리스트)', desc: '여러 개를 이어 붙임' }, { name: 'insert(i, x)', desc: 'i번 자리에 끼워 넣기' }, { name: 'pop(i)', desc: 'i번(생략하면 마지막)을 꺼내 돌려주고 삭제' }, { name: 'remove(x)', desc: '값이 x인 첫 원소 삭제' }, { name: 'reverse() · sort()', desc: '제자리에서 뒤집기 · 정렬 (None을 돌려줌)' }] },
         { name: '집합 set { }', hue: 140, items: [{ name: 'add · update', desc: '하나 추가 · 여러 개 추가 (중복은 무시)' }, { name: 'remove · discard', desc: '없으면 KeyError · 없어도 괜찮음' }, { name: '& | - ^', desc: '교집합 · 합집합 · 차집합 · 대칭차' }] },
-        { name: '딕셔너리 dict {k: v}', hue: 30, items: [{ name: 'd[k] = v', desc: '같은 키면 값을 덮어쓴다 (키 순서는 처음 넣은 순서)' }, { name: 'get(k, 기본값)', desc: '키가 없으면 기본값' }, { name: 'items() · keys() · values()' }] },
+        { name: '딕셔너리 dict {k: v}', hue: 30, items: [{ name: 'd[k] = v', desc: '같은 키면 값을 덮어쓴다 (키 순서는 처음 넣은 순서)' }, { name: 'get(k, 기본값)', desc: '키가 없으면 기본값' }, { name: 'items() · keys() · values()', desc: '딕셔너리의 (키, 값) 쌍 / 키 목록 / 값 목록을 돌려준다. for k, v in d.items():' }] },
         { name: '얕은 복사', hue: 0, items: [{ name: 'b = a', desc: '같은 객체를 함께 가리킨다' }, { name: 'b = a[:]', desc: '바깥만 새로, 안쪽 리스트는 공유' }, { name: 'copy.deepcopy(a)', desc: '안쪽까지 모두 새로' }] },
       ], quiz: false })(),
     ]),
@@ -50,9 +51,9 @@ export const LANG: Concept[] = [
     id: 'protocol', name: '프로토콜', en: 'Protocol: Syntax · Semantics · Timing', cat: 'net',
     summary: '통신하는 양쪽이 무엇을(구문), 어떤 뜻으로(의미), 언제(타이밍) 주고받을지 미리 정한 약속이다.',
     match: ['프로토콜', '통신 규약', '구문', '타이밍', 'Syntax', 'Semantics'],
-    make: board({ title: '프로토콜의 기본 요소와 기능', groups: [
+    make: () => stack([protocolLab(), board({ title: '프로토콜의 기본 요소와 기능', groups: [
       { name: '기본 요소', hue: 210, items: [{ name: '구문', en: 'Syntax', desc: '데이터 형식, 부호화, 신호 레벨 — "무엇을"' }, { name: '의미', en: 'Semantics', desc: '제어 정보, 오류 관리 — "어떤 뜻으로"' }, { name: '타이밍', en: 'Timing', desc: '속도 맞춤, 순서 제어 — "언제"' }] },
-      { name: '기능', hue: 30, items: [{ name: '단편화와 재조립' }, { name: '캡슐화' }, { name: '흐름 제어' }, { name: '오류 제어' }, { name: '동기화' }, { name: '순서 제어' }, { name: '주소 지정' }, { name: '다중화' }, { name: '경로 제어' }] },
-    ], quiz: false }),
+      { name: '기능', hue: 30, items: [{ name: '단편화와 재조립', desc: '큰 데이터를 망이 실을 수 있는 크기로 나눠 보내고(단편화) 받는 쪽에서 다시 합친다(재조립)' }, { name: '캡슐화', desc: '데이터에 주소·제어 정보(헤더)를 덧붙여 봉투에 넣듯 감싼다. 받는 쪽은 헤더를 벗긴다' }, { name: '흐름 제어', desc: '받는 쪽이 감당할 수 있는 만큼만 보내도록 양·속도를 조절한다 (슬라이딩 윈도우)' }, { name: '오류 제어', desc: '전송 중 생긴 오류를 검출(CRC·패리티)하고 재전송(ARQ)이나 정정(해밍)으로 바로잡는다' }, { name: '동기화', desc: '송수신 측의 시작 시점·비트 박자·상태를 서로 맞춘다 (동기 신호, 플래그, handshake)' }, { name: '순서 제어', desc: '패킷에 순서 번호를 붙여 뒤섞여 도착해도 원래 순서로 정렬한다' }, { name: '주소 지정', desc: '출발지·목적지 주소(MAC, IP, 포트)를 붙여 정확한 상대에게 전달한다' }, { name: '다중화', desc: '여러 통신이 하나의 회선을 나눠 쓴다 (시분할 TDM, 주파수 분할 FDM)' }, { name: '경로 제어', desc: '여러 경로 중 가장 좋은 경로를 골라 보낸다 (라우팅)' }] },
+    ], quiz: false })()]),
   },
 ];

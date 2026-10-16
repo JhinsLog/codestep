@@ -13,9 +13,9 @@ export const SEC: Concept[] = [
     match: ['CIA', '기밀성', '무결성', '가용성', 'AAA', 'Authentication', 'Authorization', 'Accounting', '인증', '인가', '3요소'],
     make: () => stack([
       board({ title: '정보보안 3요소 (CIA)', groups: [
-        { scene: CIA.confidentiality, name: '기밀성', en: 'Confidentiality', hue: 210, desc: '인가된 사용자만 열람', items: [{ name: '위협: 스니핑, 도청' }, { name: '대책: 암호화, 접근 통제' }] },
-        { scene: CIA.integrity, name: '무결성', en: 'Integrity', hue: 140, desc: '인가된 방법으로만 수정', items: [{ name: '위협: 위·변조' }, { name: '대책: 해시, 전자서명' }] },
-        { scene: CIA.availability, name: '가용성', en: 'Availability', hue: 30, desc: '필요할 때 언제든 사용', items: [{ name: '위협: DoS 공격' }, { name: '대책: 이중화, 백업, 부하 분산' }] },
+        { scene: CIA.confidentiality, name: '기밀성', en: 'Confidentiality', hue: 210, desc: '인가된 사용자만 열람', items: [{ name: '위협: 스니핑, 도청', desc: '기밀성을 깨뜨리는 공격: 오가는 데이터를 몰래 엿본다' }, { name: '대책: 암호화, 접근 통제', desc: '허가받은 사람만 내용을 볼 수 있게 한다' }] },
+        { scene: CIA.integrity, name: '무결성', en: 'Integrity', hue: 140, desc: '인가된 방법으로만 수정', items: [{ name: '위협: 위·변조', desc: '무결성을 깨뜨리는 공격: 데이터를 몰래 바꾸거나 가짜로 만든다' }, { name: '대책: 해시, 전자서명', desc: '내용이 바뀌면 해시값이 달라져 변조를 알아챈다' }] },
+        { scene: CIA.availability, name: '가용성', en: 'Availability', hue: 30, desc: '필요할 때 언제든 사용', items: [{ name: '위협: DoS 공격', desc: '가용성을 깨뜨리는 공격: 서비스를 쓸 수 없게 만든다' }, { name: '대책: 이중화, 백업, 부하 분산', desc: '장애·공격이 있어도 서비스가 계속되게 한다' }] },
       ], quiz: false })(),
       ladder({ title: 'AAA — 접근의 세 단계', top: '먼저', bottom: '나중', shape: 'stairs', hue: [200, 30], items: [
         { name: '인증', en: 'Authentication', desc: '너는 누구냐? — 비밀번호, 지문, OTP로 신원 확인' },
@@ -29,9 +29,9 @@ export const SEC: Concept[] = [
     summary: 'MAC(보안 등급으로 시스템이 강제), DAC(소유자가 마음대로), RBAC(역할에 권한을 묶어 부여).',
     match: ['접근 통제', 'DAC', 'RBAC', '임의적', '강제적', '역할 기반', 'Access Control'],
     make: board({ title: '접근 통제 모델', en: '분류 연습으로 예를 나눠 보세요', groups: [
-      { scene: ACCESS.mac, name: 'MAC 강제적', en: 'Mandatory Access Control', hue: 0, desc: '주체·객체의 보안 등급(레이블)을 비교해 시스템이 강제', items: [{ name: '군사·정부 기밀 문서' }, { name: '"비밀" 등급 사용자는 "1급 비밀" 문서를 못 연다' }] },
-      { scene: ACCESS.dac, name: 'DAC 임의적', en: 'Discretionary Access Control', hue: 140, desc: '객체 소유자가 권한을 마음대로 주고 뺏는다', items: [{ name: '유닉스 파일 권한 (chmod)' }, { name: '접근 제어 목록 (ACL)' }] },
-      { scene: ACCESS.rbac, name: 'RBAC 역할 기반', en: 'Role Based Access Control', hue: 210, desc: '역할(직무)에 권한을 묶고, 사람에게 역할을 준다', items: [{ name: '"회계 담당" 역할에 결재 권한' }, { name: '인사이동 때 역할만 바꾼다' }] },
+      { scene: ACCESS.mac, name: 'MAC 강제적', en: 'Mandatory Access Control', hue: 0, desc: '주체·객체의 보안 등급(레이블)을 비교해 시스템이 강제', items: [{ name: '군사·정부 기밀 문서', desc: '강제적 접근 통제(MAC)의 대표 예: 보안 등급과 비밀 취급 인가로 접근을 정한다' }, { name: '"비밀" 등급 사용자는 "1급 비밀" 문서를 못 연다', desc: 'MAC: 주체의 등급이 객체의 등급보다 낮으면 읽을 수 없다 (시스템이 강제)' }] },
+      { scene: ACCESS.dac, name: 'DAC 임의적', en: 'Discretionary Access Control', hue: 140, desc: '객체 소유자가 권한을 마음대로 주고 뺏는다', items: [{ name: '유닉스 파일 권한 (chmod)', desc: '임의적 접근 통제(DAC): 파일 소유자가 직접 권한을 정한다' }, { name: '접근 제어 목록 (ACL)', desc: 'DAC: 객체마다 누가 무엇을 할 수 있는지 목록으로 관리한다' }] },
+      { scene: ACCESS.rbac, name: 'RBAC 역할 기반', en: 'Role Based Access Control', hue: 210, desc: '역할(직무)에 권한을 묶고, 사람에게 역할을 준다', items: [{ name: '"회계 담당" 역할에 결재 권한', desc: '역할 기반 접근 통제(RBAC): 사람이 아니라 역할에 권한을 준다' }, { name: '인사이동 때 역할만 바꾼다', desc: 'RBAC의 장점: 권한을 사람마다 고칠 필요 없이 역할만 바꾸면 된다' }] },
     ] }),
   },
   {
@@ -58,9 +58,9 @@ export const SEC: Concept[] = [
         ] }) },
       { name: '알고리즘 분류', make: board({ title: '암호 알고리즘 분류', groups: [
         { name: '대칭키 블록', hue: 210, items: [{ name: 'DES', desc: '64비트 블록, 56비트 키 (취약)' }, { name: '3DES', desc: 'DES 세 번' }, { name: 'AES', desc: '128비트 블록, 128/192/256비트 키, DES 대체 표준' }, { name: 'SEED', desc: '국내 KISA, 128비트' }, { name: 'ARIA', desc: '국내 학·연·관' }, { name: 'IDEA', desc: '스위스, 128비트 키' }, { name: 'Skipjack', desc: 'NSA, 클리퍼 칩, 80비트 키' }] },
-        { name: '대칭키 스트림', hue: 160, items: [{ name: 'RC4', desc: 'WEP에 쓰였다' }, { name: 'LFSR' }] },
-        { name: '비대칭키 (공개키)', hue: 30, items: [{ name: 'RSA', desc: '큰 수의 소인수분해가 어렵다는 점 이용' }, { name: 'ECC', desc: '타원 곡선, 짧은 키로 같은 강도' }, { name: '디피-헬만', desc: '키 교환' }, { name: 'ElGamal' }, { name: 'DSA', desc: '전자서명' }] },
-        { name: '해시', hue: 140, items: [{ name: 'MD5', desc: '128비트 (충돌 취약)' }, { name: 'SHA-1', desc: '160비트 (취약)' }, { name: 'SHA-256', desc: 'SHA-2 계열' }, { name: 'HAVAL' }] },
+        { name: '대칭키 스트림', hue: 160, items: [{ name: 'RC4', desc: 'WEP에 쓰였다' }, { name: 'LFSR', desc: '선형 귀환 시프트 레지스터: 스트림 암호에서 키 스트림을 만드는 장치' }] },
+        { name: '비대칭키 (공개키)', hue: 30, items: [{ name: 'RSA', desc: '큰 수의 소인수분해가 어렵다는 점 이용' }, { name: 'ECC', desc: '타원 곡선, 짧은 키로 같은 강도' }, { name: '디피-헬만', desc: '키 교환' }, { name: 'ElGamal', desc: '이산 대수 문제의 어려움을 이용한 공개키(비대칭) 암호' }, { name: 'DSA', desc: '전자서명' }] },
+        { name: '해시', hue: 140, items: [{ name: 'MD5', desc: '128비트 (충돌 취약)' }, { name: 'SHA-1', desc: '160비트 (취약)' }, { name: 'SHA-256', desc: 'SHA-2 계열' }, { name: 'HAVAL', desc: '출력 길이를 128~256비트로 바꿀 수 있는 해시 함수' }] },
         { name: '무선 랜', hue: 280, items: [{ name: 'WEP', desc: '취약 (RC4)' }, { name: 'TKIP', desc: 'WPA, 패킷마다 키 변경' }, { name: 'CCMP', desc: 'WPA2, AES 기반' }] },
       ] }) },
     ]),

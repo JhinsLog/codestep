@@ -227,7 +227,7 @@ export const NET: Concept[] = [
       { name: '웹 서비스·포트', make: board({ title: '웹 서비스와 데이터 형식', groups: [
         { name: 'SOAP', hue: 210, desc: 'XML 메시지 교환 프로토콜 (무겁지만 엄격한 표준)', items: [{ name: 'WSDL', en: 'Web Services Description Language', desc: '웹 서비스의 기능·호출 방법을 XML로 설명' }, { name: 'UDDI', desc: '웹 서비스를 등록·검색하는 저장소' }, { name: 'XML', desc: '사용자가 태그를 정의하는 마크업 언어' }] },
         { name: 'REST', hue: 30, desc: '자원(URI) + HTTP 메서드', items: [{ name: 'GET 조회 · POST 생성', desc: 'PUT 수정 · DELETE 삭제' }, { name: 'JSON', en: 'JavaScript Object Notation', desc: '"이름": 값 쌍의 가벼운 형식' }] },
-        { name: '잘 알려진 포트', hue: 140, items: [{ name: 'FTP 20·21' }, { name: 'SSH 22' }, { name: 'Telnet 23' }, { name: 'SMTP 25' }, { name: 'DNS 53' }, { name: 'HTTP 80' }, { name: 'POP3 110' }, { name: 'HTTPS 443' }] },
+        { name: '잘 알려진 포트', hue: 140, items: [{ name: 'FTP 20·21', desc: '파일 전송. 21번은 제어(명령), 20번은 데이터 전송' }, { name: 'SSH 22', desc: '암호화된 원격 접속 (Telnet의 보안 대체)' }, { name: 'Telnet 23', desc: '원격 접속. 평문으로 전송되어 도청에 취약' }, { name: 'SMTP 25', desc: '메일 보내기 (송신 서버로 전달)' }, { name: 'DNS 53', desc: '도메인 이름 → IP 주소 변환' }, { name: 'HTTP 80', desc: '웹 페이지 전송 (평문)' }, { name: 'POP3 110', desc: '메일 서버에서 메일을 내려받기' }, { name: 'HTTPS 443', desc: 'TLS로 암호화한 HTTP' }] },
       ] }) },
     ]),
   },
