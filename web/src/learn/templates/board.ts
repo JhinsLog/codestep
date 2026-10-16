@@ -2,6 +2,7 @@
 // 무리별 카드에 항목이 날아 들어가고, "분류 연습"으로 직접 나눠 볼 수 있다.
 import { el } from '../../view/stage';
 import { detailBox, frame, nameHits, tween, type Viz } from '../core';
+import { openModal } from '../modal';
 
 export interface BoardItem { name: string; en?: string; desc?: string; scene?: () => HTMLElement }
 export interface BoardGroup { name: string; en?: string; desc?: string; hue?: number; items: BoardItem[]; scene?: () => HTMLElement }
@@ -13,10 +14,8 @@ export function board(spec: BoardSpec): () => Viz {
     const hasScene = spec.groups.some((g) => g.scene || g.items.some((i) => i.scene));
     const detail = detailBox(hasScene ? '항목(🎬 표시)을 누르면 예시 애니메이션과 설명이 나옵니다.' : '항목을 누르면 설명이 나옵니다.');
     const showWith = (title: string, text: string, sub: string | undefined, sc?: () => HTMLElement) => {
-      if (!sc) { detail.show(title, text, sub); return; }
-      const box = el('div');
-      box.append(sc(), el('p', '', text));
-      detail.show(title, box, sub);
+      detail.show(title, text, sub);
+      if (sc) openModal(title, [sc(), text], sub);
     };
     const tools = el('div', 'viz-tools');
     const quizBtn = el('button', '', '🧩 분류 연습');

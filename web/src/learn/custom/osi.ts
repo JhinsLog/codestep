@@ -4,6 +4,7 @@
 import { el } from '../../view/stage';
 import { detailBox, frame, lerp, linear, nameHits, player, svg, tween, type Viz } from '../core';
 import { LAYER_SCENE, OSI_SCENES } from './osiScenes';
+import { openModal } from '../modal';
 
 interface Layer { n: number; ko: string; en: string; pdu: string; protos: string; devices: string; role: string }
 
@@ -116,9 +117,7 @@ export function osiViz(): Viz {
     g.append(svg('rect', { x: d.x - 38, y: WIRE_Y - 12, width: 76, height: 24, rx: 6 }),
       svg('text', { x: d.x, y: WIRE_Y + 4, 'text-anchor': 'middle' }, `${d.name} L${d.layer}`));
     g.addEventListener('click', () => {
-      const box = el('div');
-      box.append(OSI_SCENES[{ 허브: 'hub', 스위치: 'switch', 라우터: 'router' }[d.name]!]!(), el('p', '', d.note));
-      detail.show(`${d.name} (${d.layer}계층 장비)`, box);
+      openModal(`${d.name} (${d.layer}계층 장비)`, [OSI_SCENES[{ 허브: 'hub', 스위치: 'switch', 라우터: 'router' }[d.name]!]!(), d.note]);
     });
     s.append(g);
     return g;
@@ -147,13 +146,10 @@ export function osiViz(): Viz {
   const showSeg = (k: string) => {
     const sg = SEG[k]!;
     const L = OSI.find((x) => x.n === sg.layer)!;
-    const box = el('div');
-    box.append(OSI_SCENES[k]!(), el('p', '', sg.has));
     const who = k === 'data' ? '보내는 쪽 응용 프로그램이 만들고, 받는 쪽 응용 프로그램이 받는다.'
       : k === 'enc' ? '보내는 쪽 6계층(표현)이 암호화하고, 받는 쪽 6계층이 복호화한다.'
         : `보내는 쪽 ${L.n}계층(${L.ko})이 ${sg.tail ? '뒤에' : '앞에'} 붙이고, 받는 쪽 ${L.n}계층이 확인한 뒤 떼어 낸다. 다른 계층은 이 조각을 그냥 짐으로 나른다.`;
-    box.append(el('p', 'muted small', who));
-    detail.show(`${sg.label} — ${sg.name}`, box, sg.en);
+    openModal(`${sg.label} — ${sg.name}`, [OSI_SCENES[k]!(), sg.has, el('p', 'muted small', who)], sg.en);
     legend.querySelectorAll('.osi-chip').forEach((c) => c.classList.toggle('picked', (c as HTMLElement).dataset.k === k));
   };
   /** 그림 아래 범례: 지금 캡슐이 어떤 조각들로 이루어졌는지 풀어 쓴다 */
@@ -317,9 +313,8 @@ export function osiViz(): Viz {
         const box = el('div');
         box.append(el('p', '', st.b));
         // 이 단계에서 무슨 일이 일어나는지 보여 주는 예시 장면 (누르면 펼친다)
-        const key = st.n ? LAYER_SCENE[st.n]! : 'hub';
         const open = el('button', 'scene-open', '🎬 예시 애니메이션으로 보기');
-        open.addEventListener('click', () => open.replaceWith(OSI_SCENES[key]!()));
+        open.addEventListener('click', () => showStepScene(k));
         box.append(open);
         if (L) box.append(layerInfo(L));
         detail.show(st.t, box, L ? `${L.n}계층 ${L.ko} 계층 · ${L.en}` : undefined);
@@ -339,8 +334,16 @@ export function osiViz(): Viz {
     speed = Math.abs(k - pl.at()) > 3 ? 0.55 : 1;
     await pl.jump(k);
     speed = 1;
-    // 도착하면 그 계층에서 일어나는 일을 장면으로 바로 보여 준다
-    detail.el.querySelector<HTMLButtonElement>('.scene-open')?.click();
+    // 도착하면 그 계층에서 일어나는 일을 장면 팝업으로 바로 보여 준다
+    showStepScene(k);
+  }
+
+  /** k단계에서 일어나는 일을 장면 팝업으로 */
+  function showStepScene(k: number) {
+    const st = steps[k]!;
+    const L = OSI.find((x) => x.n === st.n);
+    const key = st.n ? LAYER_SCENE[st.n]! : 'hub';
+    openModal(st.t, [OSI_SCENES[key]!(), st.b, ...(L ? [layerInfo(L)] : [])], L ? `${L.n}계층 ${L.ko} 계층 · ${L.en}` : undefined);
   }
 
   const scroll = el('div', 'viz-scroll');

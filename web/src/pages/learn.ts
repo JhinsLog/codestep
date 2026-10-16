@@ -14,6 +14,7 @@ import { CAT_ORDER, CONCEPTS, conceptById, conceptsFor, problemsOf, type Concept
 import type { Viz } from '../learn/core';
 import { el } from '../view/stage';
 import '../learn/learn.css';
+import { closeModal } from '../learn/modal';
 import { answerForm, material, saveIndicator, simulator } from './exam';
 import { mountJava } from './java';
 import { mountPython } from './python';
@@ -32,7 +33,7 @@ function link(href: string, cls: string, text: string): HTMLAnchorElement {
 export function mountLearn(root: HTMLElement, path: string): () => void {
   const [, , a, b] = path.split('/');
   const cleanup: (() => void)[] = [];
-  const done = () => { for (const f of cleanup) f(); store.flush(); };
+  const done = () => { closeModal(); for (const f of cleanup) f(); store.flush(); };
   root.innerHTML = '';
   if (a === 'c' && b) {
     const c = conceptById(decodeURIComponent(b));

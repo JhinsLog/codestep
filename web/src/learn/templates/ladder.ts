@@ -2,6 +2,7 @@
 // 막대가 차례로 올라오고, ▶ 재생으로 위에서부터 하나씩 짚으며 설명한다.
 import { el } from '../../view/stage';
 import { detailBox, frame, nameHits, player, tween, type Viz } from '../core';
+import { openModal } from '../modal';
 
 export interface LadderItem { name: string; en?: string; desc: string; tag?: string; scene?: () => HTMLElement }
 export interface LadderSpec {
@@ -43,14 +44,13 @@ export function ladder(spec: LadderSpec): () => Viz {
       bars.forEach((b, j) => b.classList.toggle('picked', j === k));
       const it = spec.items[k]!;
       if (!it.scene) { detail.show(`${k + 1}. ${it.name}`, it.desc, it.en); return; }
+      const popup = () => openModal(`${k + 1}. ${it.name}`, [it.scene!(), it.desc], it.en);
+      if (withScene) { popup(); detail.show(`${k + 1}. ${it.name}`, it.desc, it.en); return; }
+      // 재생 중에는 글만 보여 주고, 단추로 장면 팝업을 연다
       const box = el('div');
-      if (withScene) box.append(it.scene());
-      else {
-        const open = el('button', 'scene-open', '🎬 예시 애니메이션으로 보기');
-        open.addEventListener('click', () => open.replaceWith(it.scene!()));
-        box.append(open);
-      }
-      box.append(el('p', '', it.desc));
+      const open = el('button', 'scene-open', '🎬 예시 애니메이션으로 보기');
+      open.addEventListener('click', popup);
+      box.append(el('p', '', it.desc), open);
       detail.show(`${k + 1}. ${it.name}`, box, it.en);
     };
     // 처음 열 때 막대가 차례로 올라온다
