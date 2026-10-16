@@ -335,3 +335,12 @@ button.danger { border-color: var(--error); color: var(--error); }
 .osi-sync path { fill: var(--glow); }
 .osi-sync text { font-size: 9px; font-weight: 800; fill: var(--glow); }
 .osi-sync-cap { font-size: 10px; font-weight: 800; fill: var(--glow); }
+.osi-seg:not(.flying) { cursor: pointer; }
+.osi-seg:not(.flying):hover rect { stroke-width: 2.5; }
+.osi-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 30px; }
+.osi-legend-h { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.osi-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 8px; font-size: 12px; white-space: nowrap;
+  background: hsl(var(--h) var(--vbg-s) var(--vbg-l)); border: 1.5px solid hsl(var(--h) var(--vbd-s) var(--vbd-l)); color: var(--text); }
+.osi-chip b { font: 800 12px var(--mono); color: hsl(var(--h) var(--vfg-s) var(--vfg-l)); }
+.osi-chip.fresh { animation: viz-glow 1.2s ease-in-out 2; }
+.osi-chip.picked { box-shadow: 0 0 0 2px var(--accent); }

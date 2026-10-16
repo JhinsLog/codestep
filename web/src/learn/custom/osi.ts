@@ -23,16 +23,17 @@ const TCPIP = [
 
 // 캡슐 조각: 데이터와 계층별 헤더 (layer: 어느 계층이 붙이는가)
 // OSI 참조 모델에서는 7~2계층이 각자 헤더를 붙인다: AH·PH·SH(응용·표현·세션), TCP(전송), IP(네트워크), MAC+FCS(데이터 링크)
-const SEG: Record<string, { label: string; w: number; layer: number }> = {
-  data: { label: 'DATA', w: 40, layer: 7 },
-  enc: { label: '🔒DATA', w: 44, layer: 6 },
-  ah: { label: 'AH', w: 24, layer: 7 },
-  ph: { label: 'PH', w: 24, layer: 6 },
-  sh: { label: 'SH', w: 24, layer: 5 },
-  tcp: { label: 'TCP', w: 32, layer: 4 },
-  ip: { label: 'IP', w: 24, layer: 3 },
-  mac: { label: 'MAC', w: 34, layer: 2 },
-  fcs: { label: 'FCS', w: 28, layer: 2 },
+// name: 조각의 이름, has: 안에 담긴 정보 (캡슐 조각을 누르거나 범례에서 보여 준다)
+const SEG: Record<string, { label: string; w: number; layer: number; name: string; en: string; has: string; tail?: boolean }> = {
+  data: { label: 'DATA', w: 40, layer: 7, name: '데이터', en: 'Data (Payload)', has: '실제로 보내려는 내용. 예: 웹 브라우저의 요청 "GET /index.html"' },
+  enc: { label: '🔒DATA', w: 44, layer: 6, name: '암호화된 데이터', en: 'Encrypted Data', has: '표현 계층이 암호화·압축한 데이터. 중간에서 엿봐도 내용을 알 수 없다' },
+  ah: { label: 'AH', w: 24, layer: 7, name: '응용 헤더', en: 'Application Header', has: '어떤 응용 서비스(HTTP, FTP …)의 어떤 요청인지 같은 응용 계층의 제어 정보' },
+  ph: { label: 'PH', w: 24, layer: 6, name: '표현 헤더', en: 'Presentation Header', has: '데이터를 어떤 형식으로 바꿨는지: 문자 코드(UTF-8), 암호화 방식(TLS), 압축 방식' },
+  sh: { label: 'SH', w: 24, layer: 5, name: '세션 헤더', en: 'Session Header', has: '세션(대화) 번호, 대화 방식(반이중·전이중), 동기점(체크포인트) 번호' },
+  tcp: { label: 'TCP', w: 32, layer: 4, name: 'TCP 헤더 (전송 헤더)', en: 'Transport Header', has: '출발지·목적지 포트 번호(어느 프로그램인지), 순서 번호(seq), 확인 번호(ack), 창 크기' },
+  ip: { label: 'IP', w: 24, layer: 3, name: 'IP 헤더 (네트워크 헤더)', en: 'Network Header', has: '출발지·목적지 IP 주소(어느 컴퓨터인지), TTL(거쳐 갈 수 있는 라우터 수)' },
+  mac: { label: 'MAC', w: 34, layer: 2, name: 'MAC 헤더 (데이터 링크 헤더)', en: 'Data Link Header', has: '출발지·목적지 MAC 주소(바로 다음 장비의 랜카드 주소). 장비를 지날 때마다 바뀐다' },
+  fcs: { label: 'FCS', w: 28, layer: 2, name: 'FCS 트레일러', en: 'Frame Check Sequence', has: '오류 검사용 CRC 값. 프레임 맨 뒤에 붙어서 헤더가 아니라 트레일러라 한다', tail: true },
 };
 
 // 그림 크기: 계층 칸(이름표 + 데이터가 지나가는 통로) 7개, 칸 사이에는 캡슐이 지나가는 틈
@@ -134,12 +135,45 @@ export function osiViz(): Viz {
   const segEl = (k: string, x: number, extra = '') => {
     const sg = SEG[k]!;
     const g = svg('g', { class: `osi-seg osi-l${sg.layer}${extra}` });
-    g.append(svg('rect', { x, y: -11, width: sg.w - 2, height: 22, rx: 4 }), svg('text', { x: x + (sg.w - 2) / 2, y: 4, 'text-anchor': 'middle' }, sg.label));
+    g.append(svg('title', {}, `${sg.label}: ${sg.name} — ${sg.has}`), svg('rect', { x, y: -11, width: sg.w - 2, height: 22, rx: 4 }), svg('text', { x: x + (sg.w - 2) / 2, y: 4, 'text-anchor': 'middle' }, sg.label));
     return g;
   };
-  const drawCap = (keys: string[]) => {
+  /** 캡슐 조각 설명: 무엇인지, 안에 무엇이 있는지, 누가 붙이고 떼는지 */
+  const showSeg = (k: string) => {
+    const sg = SEG[k]!;
+    const L = OSI.find((x) => x.n === sg.layer)!;
+    const box = el('div');
+    box.append(el('p', '', sg.has));
+    const who = k === 'data' ? '보내는 쪽 응용 프로그램이 만들고, 받는 쪽 응용 프로그램이 받는다.'
+      : k === 'enc' ? '보내는 쪽 6계층(표현)이 암호화하고, 받는 쪽 6계층이 복호화한다.'
+        : `보내는 쪽 ${L.n}계층(${L.ko})이 ${sg.tail ? '뒤에' : '앞에'} 붙이고, 받는 쪽 ${L.n}계층이 확인한 뒤 떼어 낸다. 다른 계층은 이 조각을 그냥 짐으로 나른다.`;
+    box.append(el('p', 'muted small', who));
+    detail.show(`${sg.label} — ${sg.name}`, box, sg.en);
+    legend.querySelectorAll('.osi-chip').forEach((c) => c.classList.toggle('picked', (c as HTMLElement).dataset.k === k));
+  };
+  /** 그림 아래 범례: 지금 캡슐이 어떤 조각들로 이루어졌는지 풀어 쓴다 */
+  const legend = el('div', 'osi-legend');
+  const paintLegend = (keys: string[], fresh: string[] = []) => {
+    legend.replaceChildren();
+    if (!keys.length) { legend.append(el('span', 'muted small', '캡슐 구성: ▶ 재생을 누르거나 계층을 누르면, 지금 데이터가 어떤 조각들로 싸여 있는지 여기에 풀어 씁니다.')); return; }
+    legend.append(el('span', 'osi-legend-h', '지금 캡슐 (앞 → 뒤)'));
+    for (const k of keys) {
+      const sg = SEG[k]!;
+      const c = el('button', `osi-chip osi-l${sg.layer}${fresh.includes(k) ? ' fresh' : ''}`);
+      c.dataset.k = k;
+      c.append(el('b', '', sg.label), el('span', '', `${sg.name} · ${k === 'data' || k === 'enc' ? '내용' : `${sg.layer}계층`}`));
+      c.addEventListener('click', () => showSeg(k));
+      legend.append(c);
+    }
+  };
+  const drawCap = (keys: string[], fresh: string[] = []) => {
     segs = keys;
-    cap.replaceChildren(...keys.map((k, i) => segEl(k, segX(keys, i))));
+    cap.replaceChildren(...keys.map((k, i) => {
+      const g = segEl(k, segX(keys, i));
+      g.addEventListener('click', () => showSeg(k));
+      return g;
+    }));
+    paintLegend(keys, fresh);
   };
   const place = () => capWrap.setAttribute('transform', `translate(${laneX(side)} ${capY})`);
   const glow = (sd: 'L' | 'R' | null, n: number) => { for (const r of rows) r.g.classList.toggle('active', r.side === sd && r.n === n); };
@@ -171,7 +205,7 @@ export function osiViz(): Viz {
     capY = midY(n); place();
     await Promise.all(add.map((k) => fly(k, { x: labelX('L'), y: midY(n) },
       { x: laneX('L') + segX(keys, keys.indexOf(k)) + SEG[k]!.w / 2, y: midY(n) }, instant, false)));
-    drawCap(keys);
+    drawCap(keys, instant ? [] : add);
     if (!instant) for (const k of add) cap.children[keys.indexOf(k)]?.classList.add('pop');
     if (!instant && after) await after();
   };
@@ -299,7 +333,7 @@ export function osiViz(): Viz {
 
   const scroll = el('div', 'viz-scroll');
   scroll.append(s);
-  body.append(tools, pl.el, scroll, detail.el);
+  body.append(tools, pl.el, scroll, legend, detail.el);
   return {
     el: root,
     focus(names) {
