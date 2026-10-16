@@ -3,8 +3,7 @@ import { board } from '../three/adapt';
 import { graph } from '../three/adapt';
 import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
-import { chmod, raid } from '../custom/misc';
-import { pagingViz, schedViz } from '../custom/sims';
+import { chmodLab, pagingLab, raidLab, schedLab } from '../three/osLabs';
 import type { Concept } from './types';
 
 export const OS: Concept[] = [
@@ -35,7 +34,7 @@ export const OS: Concept[] = [
     summary: '비선점(FCFS, SJF, HRN)은 한번 잡으면 끝까지, 선점(RR, SRT, MLQ)은 도중에 빼앗는다. SJF의 기아는 에이징·HRN으로 줄인다.',
     match: ['스케줄링', 'FCFS', 'SJF', 'SRT', 'HRN', 'RR', '라운드 로빈', '선점', '비선점', '기아', '에이징', '호위', 'Convoy', '평균 대기', '평균 반환'],
     make: () => tabs([
-      { name: '간트 차트로 비교', make: schedViz },
+      { name: '3D 스케줄러', make: schedLab },
       { name: '선점·비선점', make: board({ title: '스케줄링 기법 분류', groups: [
         { name: '비선점', en: 'Non-preemptive', hue: 210, desc: '한번 CPU를 잡으면 끝날 때까지', items: [
           { name: 'FCFS', en: '선입선처리', desc: '먼저 온 순서. 긴 작업 뒤에 줄 서는 호위 효과' }, { name: 'SJF', en: '최단 작업 우선', desc: '실행 시간이 짧은 것 먼저. 긴 작업은 기아' },
@@ -51,14 +50,14 @@ export const OS: Concept[] = [
     id: 'paging', name: '페이지 교체', en: 'Page Replacement', cat: 'os',
     summary: '빈 프레임이 없을 때 어떤 페이지를 내보낼지: FIFO(먼저 들어온 것), LRU(가장 오래 안 쓴 것), LFU(가장 적게 쓴 것), OPT(앞으로 가장 오래 안 쓸 것).',
     match: ['페이지 교체', 'LRU', 'FIFO', 'OPT', 'LFU', '페이지 부재', 'Page Fault', '프레임'],
-    make: pagingViz,
+    make: pagingLab,
   },
   {
     id: 'linux', name: '리눅스와 파일 권한', en: 'UNIX · Linux · chmod', cat: 'os',
     summary: 'rwx = 4·2·1을 더해 소유자·그룹·기타 순서로 쓴다(751). UNIX는 커널·셸·유틸리티로 이루어진다.',
     match: ['chmod', '권한', 'pwd', 'chown', '리눅스', 'UNIX', '유닉스', '셸', '커널', '안드로이드', 'Android', '디렉터리', '명령어'],
     make: () => tabs([
-      { name: 'chmod 권한', make: chmod },
+      { name: 'chmod 권한', make: chmodLab },
       { name: '명령어', make: board({ title: '자주 나오는 리눅스 명령어', groups: [
         { name: '위치·목록', hue: 200, items: [{ name: 'pwd', desc: '현재 작업 디렉터리 경로 출력' }, { name: 'ls', desc: '파일 목록 (-l 자세히, -a 숨김 포함)' }, { name: 'cd', desc: '디렉터리 이동' }] },
         { name: '파일', hue: 30, items: [{ name: 'cp', desc: '복사' }, { name: 'mv', desc: '이동·이름 바꾸기' }, { name: 'rm', desc: '삭제' }, { name: 'mkdir', desc: '디렉터리 만들기' }, { name: 'cat', desc: '내용 보기' }] },
@@ -76,6 +75,6 @@ export const OS: Concept[] = [
     id: 'raid', name: 'RAID', en: 'Redundant Array of Independent Disks', cat: 'os',
     summary: 'RAID 0(스트라이핑, 빠르지만 중복 없음), 1(미러링), 5(분산 패리티, 1개 고장까지), 6(이중 패리티, 2개 고장까지).',
     match: ['RAID', '스트라이핑', '미러링', '패리티 분산', 'Striping', 'Mirroring'],
-    make: raid,
+    make: raidLab,
   },
 ];
