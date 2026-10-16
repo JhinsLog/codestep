@@ -136,10 +136,25 @@ async function check() {
   log(`연결 토큰: ${n.status === 401 ? '거부됨 (토큰이 홈서버와 다름)' : n.status === 204 || n.status === 200 ? '정상' : `응답 ${n.status}`}`);
 }
 
+/** 모델 서버가 지금 떠 있는가 (나히다가 유휴로 내리거나 다른 앱이 GPU를 가져가면 사라진다) */
+async function modelUp() {
+  try { return (await fetch(`${MODEL_URL}/models`, { signal: AbortSignal.timeout(3000) })).ok; } catch { return false; }
+}
+
 async function loop() {
   log(`시작: 홈서버 ${BASE}, 모델 서버 ${MODEL_URL}`);
   let backoff = 1000;
+  let wasUp = true;
   for (;;) {
+    // 모델 서버가 없으면 질문을 가져가지 않는다 → 홈서버 화면에 "AI 꺼짐"으로 보인다
+    if (!(await modelUp())) {
+      if (wasUp) log('모델 서버가 꺼져 있습니다. 질문을 받지 않고 15초마다 확인합니다.');
+      wasUp = false;
+      await sleep(15_000);
+      continue;
+    }
+    if (!wasUp) log('모델 서버가 다시 떴습니다. 질문을 받습니다.');
+    wasUp = true;
     try {
       const r = await fetch(`${BASE}/api/ai/next`, { headers: auth, signal: AbortSignal.timeout(40_000) });
       if (r.status === 401) { console.error('연결 토큰이 거부되었습니다. 토큰 파일을 확인하세요.'); process.exit(3); }

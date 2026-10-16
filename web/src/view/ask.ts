@@ -47,7 +47,7 @@ export function askPanel(context: () => string): HTMLElement {
       const s = await (await fetch('/api/ask/status')).json() as { enabled: boolean; online: boolean; queue: number };
       dot.className = `ask-dot ${!s.enabled ? 'off' : s.online ? 'on' : 'idle'}`;
       dot.title = !s.enabled ? 'AI 기능 꺼짐' : s.online ? 'AI 연결됨' : 'AI 서버(데스크탑) 꺼짐';
-      state.textContent = !s.enabled ? 'AI 질문 기능이 아직 꺼져 있습니다.' : s.online ? `AI 연결됨${s.queue ? ` · 대기 ${s.queue}건` : ''}` : 'AI 서버(데스크탑)가 꺼져 있어 지금은 답할 수 없습니다.';
+      state.textContent = !s.enabled ? 'AI 질문 기능이 아직 꺼져 있습니다.' : s.online ? `AI 연결됨${s.queue ? ` · 대기 ${s.queue}건` : ''}` : 'AI 서버(데스크탑의 모델)가 지금 꺼져 있어 답할 수 없습니다. 운영자가 AI를 켜 두었을 때 다시 질문해 주세요.';
     } catch { dot.className = 'ask-dot off'; }
   }
   box.addEventListener('toggle', () => { if (box.open) { paintCode(); void status(); } });
