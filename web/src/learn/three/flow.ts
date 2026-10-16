@@ -68,7 +68,7 @@ export interface FlowSpec {
   view?: [number, number, number, number];
 }
 
-const NAME_Y: Record<Shape, number> = { box: 1.25, pc: 1.55, server: 2.05, router: 0.95, switch: 0.8, db: 1.45, person: 2.0, cloud: 1.7, disk: 0.75, wall: 1.95, doc: 1.6, chip: 0.8, hub: 0.8, phone: 1.4 };
+export const NAME_Y: Record<Shape, number> = { box: 1.25, pc: 1.55, server: 2.05, router: 0.95, switch: 0.8, db: 1.45, person: 2.0, cloud: 1.7, disk: 0.75, wall: 1.95, doc: 1.6, chip: 0.8, hub: 0.8, phone: 1.4 };
 
 export function tone(w: World, t: Tone | undefined, fallback: number): number {
   if (t === undefined) return fallback;
@@ -118,7 +118,7 @@ export function packet(w: World, label: string, color: number): Group {
   g.add(cube);
   g.userData.body = cube.userData.body;
   if (label) {
-    const s = w.sign([{ text: label, color: '#ffffff', weight: 800, size: 40 }], 0.42, hex(color));
+    const s = w.sign([{ text: label, color: '#ffffff', weight: 800, size: 40 }], 0.5, hex(color));
     s.position.y = 0.75;
     g.add(s);
   }

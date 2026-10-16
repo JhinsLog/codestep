@@ -4,7 +4,7 @@ import { fields } from '../three/adapt';
 import { graph } from '../three/adapt';
 import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
-import { osiViz } from '../custom/osi';
+import { osiLab } from '../three/osiLab';
 import { subnetLab } from '../three/netLabs';
 import { cloudLab } from '../three/devLabs';
 import type { Concept } from './types';
@@ -14,7 +14,7 @@ export const NET: Concept[] = [
     id: 'osi', name: 'OSI 7계층', en: 'OSI 7 Layer', cat: 'net',
     summary: '통신을 7단계로 나눈 표준 모델. 보낼 때는 위에서 아래로 헤더를 붙이고(캡슐화), 받을 때는 아래에서 위로 떼어 낸다.',
     match: ['OSI', '7계층', '물리 계층', '데이터 링크', '네트워크 계층', '전송 계층', '세션 계층', '표현 계층', '응용 계층', '캡슐화', 'PDU', '허브', '리피터', '브리지', 'Physical Layer', 'Data Link'],
-    make: osiViz,
+    make: osiLab,
   },
   {
     id: 'tcp', name: 'TCP와 UDP', en: 'Transmission Control / User Datagram Protocol', cat: 'net',

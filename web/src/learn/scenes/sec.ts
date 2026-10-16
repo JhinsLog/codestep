@@ -1,5 +1,5 @@
 // 보안 개념의 예시 장면: 정보보안 3요소, 접근 통제 모델, 악성 소프트웨어
-import { scene } from '../scene';
+import { scene } from '../three/scene3d';
 
 // ── 정보보안 3요소 ──
 export const CIA: Record<string, () => HTMLElement> = {

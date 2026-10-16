@@ -1,6 +1,6 @@
 // 소프트웨어 설계 개념의 예시 장면: 결합도 6가지, 응집도 7가지
 import { svg } from '../core';
-import { scene, type SceneApi } from '../scene';
+import { scene, type SceneApi } from '../three/scene3d';
 
 // ── 결합도: 모듈 A와 B 사이에 "무엇이" 오가는가 ──
 const AB = [{ id: 'a', x: 90, y: 100, icon: '🧩', label: '모듈 A' }, { id: 'b', x: 470, y: 100, icon: '🧩', label: '모듈 B' }];

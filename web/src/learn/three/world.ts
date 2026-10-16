@@ -49,7 +49,7 @@ export class World {
   readonly round = new RoundedBoxGeometry(1, 1, 1, 3, 0.1);
   readonly ball = new SphereGeometry(0.5, 24, 16);
 
-  constructor(height = 440) {
+  constructor(height = 440, opts: { autoDispose?: boolean } = {}) {
     this.el = el('div', 'world3d');
     (this.el as unknown as { world: World }).world = this;
     this.el.style.height = `${height}px`;
@@ -87,9 +87,15 @@ export class World {
     this.offTheme = onTheme(() => { this.pal = isDark() ? DARK : LIGHT; this.paintTheme(); this.onRepaint?.(); });
     this.resize();
     this.listen();
+    // 팝업 속 장면처럼 따로 닫아 주는 곳이 없으면, 화면에서 빠진 뒤 스스로 정리한다
+    let wasOn = false, offFrames = 0;
     const loop = () => {
       if (!this.alive) return;
       this.raf = requestAnimationFrame(loop);
+      if (opts.autoDispose) {
+        if (this.el.isConnected) { wasOn = true; offFrames = 0; }
+        else if (wasOn && ++offFrames > 30) { this.dispose(); return; }
+      }
       if (!this.el.isConnected || document.hidden || !this.seen) return;
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
@@ -107,7 +113,7 @@ export class World {
     m.opacity = 0.6;
   }
 
-  private resize() {
+  resize() {
     const w = this.el.clientWidth || 600, h = this.el.clientHeight || 400;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -153,6 +159,7 @@ export class World {
 
   /** x0~x1, z0~z1 범위가 화면에 다 들어오게 카메라를 옮긴다 */
   fit(x0: number, x1: number, z0: number, z1: number, ms = 800, tilt = 0.78) {
+    this.resize();   // 화면에 막 붙은 경우 실제 비율로
     const half = Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * this.camera.aspect);
     const d = Math.max(7, ((x1 - x0) / 2 / Math.tan(half)) * 1.4, (z1 - z0) * 1.08);
     this.look(new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.4), d, ms, tilt);

@@ -1,6 +1,6 @@
 // OSI 설명용 장면: 캡슐 조각·계층·장비를 누르면 "무슨 일이 일어나는지"를 짧은 애니메이션으로 보여 준다.
 import { svg } from '../core';
-import { scene, type SceneApi } from '../scene';
+import { scene, type SceneApi } from '../three/scene3d';
 
 const W = 560;
 

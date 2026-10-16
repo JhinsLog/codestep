@@ -3,6 +3,7 @@ import { board } from '../three/adapt';
 import { ladder } from '../three/adapt';
 import { seq } from '../three/adapt';
 import { stack, tabs } from '../core';
+import { sceneTabs } from '../three/sceneTabs';
 import type { Concept } from './types';
 import { ACCESS, CIA, MALWARE } from '../scenes/sec';
 
@@ -11,7 +12,7 @@ export const SEC: Concept[] = [
     id: 'cia', name: '정보보안 3요소와 AAA', en: 'Confidentiality · Integrity · Availability', cat: 'sec',
     summary: '기밀성(인가된 사람만 본다), 무결성(인가된 방법으로만 고친다), 가용성(필요할 때 쓸 수 있다). AAA는 인증 → 인가 → 계정 관리.',
     match: ['CIA', '기밀성', '무결성', '가용성', 'AAA', 'Authentication', 'Authorization', 'Accounting', '인증', '인가', '3요소'],
-    make: () => stack([
+    make: () => stack([sceneTabs('정보보안 3요소 장면', 'CIA', [{ name: '기밀성', en: 'Confidentiality', desc: '인가된 사람만 볼 수 있다. 위협: 스니핑·도청 / 대책: 암호화·접근 통제', scene: CIA.confidentiality! }, { name: '무결성', en: 'Integrity', desc: '인가된 방법으로만 고칠 수 있다. 위협: 위·변조 / 대책: 해시·전자서명', scene: CIA.integrity! }, { name: '가용성', en: 'Availability', desc: '필요할 때 언제든 쓸 수 있다. 위협: DoS / 대책: 이중화·백업·부하 분산', scene: CIA.availability! }]), 
       board({ title: '정보보안 3요소 (CIA)', groups: [
         { scene: CIA.confidentiality, name: '기밀성', en: 'Confidentiality', hue: 210, desc: '인가된 사용자만 열람', items: [{ name: '위협: 스니핑, 도청', desc: '기밀성을 깨뜨리는 공격: 오가는 데이터를 몰래 엿본다' }, { name: '대책: 암호화, 접근 통제', desc: '허가받은 사람만 내용을 볼 수 있게 한다' }] },
         { scene: CIA.integrity, name: '무결성', en: 'Integrity', hue: 140, desc: '인가된 방법으로만 수정', items: [{ name: '위협: 위·변조', desc: '무결성을 깨뜨리는 공격: 데이터를 몰래 바꾸거나 가짜로 만든다' }, { name: '대책: 해시, 전자서명', desc: '내용이 바뀌면 해시값이 달라져 변조를 알아챈다' }] },
@@ -28,11 +29,11 @@ export const SEC: Concept[] = [
     id: 'access', name: '접근 통제 모델', en: 'MAC · DAC · RBAC', cat: 'sec',
     summary: 'MAC(보안 등급으로 시스템이 강제), DAC(소유자가 마음대로), RBAC(역할에 권한을 묶어 부여).',
     match: ['접근 통제', 'DAC', 'RBAC', '임의적', '강제적', '역할 기반', 'Access Control'],
-    make: board({ title: '접근 통제 모델', en: '분류 연습으로 예를 나눠 보세요', groups: [
+    make: () => stack([sceneTabs('접근 통제 장면', 'MAC · DAC · RBAC', [{ name: 'MAC 강제적', en: 'Mandatory', desc: '주체·객체의 보안 등급을 비교해 시스템이 강제로 허용·거부한다', scene: ACCESS.mac! }, { name: 'DAC 임의적', en: 'Discretionary', desc: '객체 소유자가 권한을 마음대로 주고 뺏는다 (chmod, ACL)', scene: ACCESS.dac! }, { name: 'RBAC 역할 기반', en: 'Role Based', desc: '역할에 권한을 묶고 사람에게 역할을 준다', scene: ACCESS.rbac! }]), (board({ title: '접근 통제 모델', en: '분류 연습으로 예를 나눠 보세요', groups: [
       { scene: ACCESS.mac, name: 'MAC 강제적', en: 'Mandatory Access Control', hue: 0, desc: '주체·객체의 보안 등급(레이블)을 비교해 시스템이 강제', items: [{ name: '군사·정부 기밀 문서', desc: '강제적 접근 통제(MAC)의 대표 예: 보안 등급과 비밀 취급 인가로 접근을 정한다' }, { name: '"비밀" 등급 사용자는 "1급 비밀" 문서를 못 연다', desc: 'MAC: 주체의 등급이 객체의 등급보다 낮으면 읽을 수 없다 (시스템이 강제)' }] },
       { scene: ACCESS.dac, name: 'DAC 임의적', en: 'Discretionary Access Control', hue: 140, desc: '객체 소유자가 권한을 마음대로 주고 뺏는다', items: [{ name: '유닉스 파일 권한 (chmod)', desc: '임의적 접근 통제(DAC): 파일 소유자가 직접 권한을 정한다' }, { name: '접근 제어 목록 (ACL)', desc: 'DAC: 객체마다 누가 무엇을 할 수 있는지 목록으로 관리한다' }] },
       { scene: ACCESS.rbac, name: 'RBAC 역할 기반', en: 'Role Based Access Control', hue: 210, desc: '역할(직무)에 권한을 묶고, 사람에게 역할을 준다', items: [{ name: '"회계 담당" 역할에 결재 권한', desc: '역할 기반 접근 통제(RBAC): 사람이 아니라 역할에 권한을 준다' }, { name: '인사이동 때 역할만 바꾼다', desc: 'RBAC의 장점: 권한을 사람마다 고칠 필요 없이 역할만 바꾸면 된다' }] },
-    ] }),
+    ] }))()]),
   },
   {
     id: 'crypto', name: '암호 기술', en: 'Symmetric · Asymmetric · Hash', cat: 'sec',
@@ -118,11 +119,11 @@ export const SEC: Concept[] = [
     id: 'malware', name: '악성 소프트웨어', en: 'Malware', cat: 'sec',
     summary: '바이러스(기생), 웜(스스로 전파), 트로이 목마(위장), 랜섬웨어(몸값), 스케어웨어(겁주기), 루트킷(숨기기), 백도어(뒷문) …',
     match: ['악성', '웜', '랜섬웨어', '스케어웨어', '루트킷', '백도어', '트로이', '키로거', '스파이웨어', '애드웨어', '바이러스', 'Malware'],
-    make: board({ title: '악성 소프트웨어', en: '분류 연습으로 특징을 맞혀 보세요', groups: [
+    make: () => stack([sceneTabs('악성 소프트웨어 장면', 'Malware', [{ name: '바이러스', en: 'Virus', desc: '다른 파일에 기생해 퍼진다', scene: MALWARE.virus! }, { name: '웜', en: 'Worm', desc: '숙주 없이 스스로 복제해 네트워크로 퍼진다', scene: MALWARE.worm! }, { name: '트로이 목마', en: 'Trojan Horse', desc: '정상 프로그램으로 위장. 스스로 복제하지 않는다', scene: MALWARE.trojan! }, { name: '랜섬웨어', en: 'Ransomware', desc: '파일을 암호화하고 몸값 요구', scene: MALWARE.ransomware! }, { name: '스케어웨어', en: 'Scareware', desc: '가짜 경고로 겁줘서 결제·설치 유도', scene: MALWARE.scareware! }, { name: '애드웨어', en: 'Adware', desc: '광고를 띄운다', scene: MALWARE.adware! }, { name: '루트킷', en: 'Rootkit', desc: '관리자 권한을 얻고 침입 흔적을 숨긴다', scene: MALWARE.rootkit! }, { name: '백도어', en: 'Backdoor', desc: '인증을 거치지 않는 뒷문', scene: MALWARE.backdoor! }, { name: '키로거', en: 'Keylogger', desc: '키 입력을 몰래 기록', scene: MALWARE.keylogger! }, { name: '스파이웨어', en: 'Spyware', desc: '정보를 몰래 빼낸다', scene: MALWARE.spyware! }]), (board({ title: '악성 소프트웨어', en: '분류 연습으로 특징을 맞혀 보세요', groups: [
       { name: '퍼지는 방식', hue: 0, items: [{ scene: MALWARE.virus, name: '바이러스', en: 'Virus', desc: '다른 파일에 기생해 퍼진다' }, { scene: MALWARE.worm, name: '웜', en: 'Worm', desc: '숙주 없이 스스로 복제해 네트워크로 퍼진다' }, { scene: MALWARE.trojan, name: '트로이 목마', en: 'Trojan Horse', desc: '정상 프로그램으로 위장. 스스로 복제하지 않는다' }] },
       { name: '돈을 노림', hue: 40, items: [{ scene: MALWARE.ransomware, name: '랜섬웨어', en: 'Ransomware', desc: '파일을 암호화하고 몸값 요구' }, { scene: MALWARE.scareware, name: '스케어웨어', en: 'Scareware', desc: '가짜 경고로 겁줘서 결제·설치 유도' }, { scene: MALWARE.adware, name: '애드웨어', en: 'Adware', desc: '광고를 띄운다' }] },
       { name: '숨어서 훔침', hue: 270, items: [{ scene: MALWARE.rootkit, name: '루트킷', en: 'Rootkit', desc: '관리자 권한을 얻고 침입 흔적을 숨긴다' }, { scene: MALWARE.backdoor, name: '백도어', en: 'Backdoor', desc: '인증을 거치지 않는 뒷문' }, { scene: MALWARE.keylogger, name: '키로거', en: 'Keylogger', desc: '키 입력을 몰래 기록' }, { scene: MALWARE.spyware, name: '스파이웨어', en: 'Spyware', desc: '정보를 몰래 빼낸다' }] },
-    ] }),
+    ] }))()]),
   },
   {
     id: 'sectech', name: '보안 기술과 인증 제도', en: 'OTP · SSO · OAuth · ISMS · SIEM', cat: 'sec',

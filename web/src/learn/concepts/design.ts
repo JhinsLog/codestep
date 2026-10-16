@@ -5,6 +5,7 @@ import { ladder } from '../three/adapt';
 import { stack, tabs } from '../core';
 import { gofLab } from '../three/gofLab';
 import { dataNewLab, erLab, fileOrgLab, oopLab } from '../three/moreLabs';
+import { sceneTabs } from '../three/sceneTabs';
 import type { Concept } from './types';
 import { COHESION, COUPLING } from '../scenes/design';
 
@@ -13,20 +14,20 @@ export const DESIGN: Concept[] = [
     id: 'coupling', name: '결합도', en: 'Coupling', cat: 'design',
     summary: '모듈과 모듈 "사이"의 의존 정도. 약할수록 좋다: 자료 < 스탬프 < 제어 < 외부 < 공통 < 내용.',
     match: ['결합도', 'Coupling'],
-    make: ladder({ title: '결합도 — 약한(좋은) 것부터', en: 'Coupling', top: '약함 · 좋은 설계', bottom: '강함 · 나쁜 설계', hue: [140, 0], items: [
+    make: () => stack([sceneTabs('결합도 장면', 'Coupling', [{ name: '자료 결합도', en: 'Data Coupling', desc: '모듈끼리 꼭 필요한 데이터(값)만 매개변수로 주고받는다. 가장 바람직하다. 예: add(a, b)', scene: COUPLING.data! }, { name: '스탬프 결합도', en: 'Stamp Coupling', desc: '배열·구조체·레코드 같은 자료 구조를 통째로 넘기지만, 받는 쪽은 그 일부만 쓴다.', scene: COUPLING.stamp! }, { name: '제어 결합도', en: 'Control Coupling', desc: '어떻게 처리하라는 제어 신호(플래그)를 넘겨 상대의 내부 흐름을 바꾼다. 예: print(data, mode)', scene: COUPLING.control! }, { name: '외부 결합도', en: 'External Coupling', desc: '외부에서 정한 데이터 형식, 통신 규약, 장치를 함께 참조한다.', scene: COUPLING.external! }, { name: '공통 결합도', en: 'Common Coupling', desc: '여러 모듈이 하나의 전역 변수(공통 데이터 영역)를 함께 쓰고 고친다. 하나를 바꾸면 모두 영향을 받는다.', scene: COUPLING.common! }, { name: '내용 결합도', en: 'Content Coupling', desc: '다른 모듈의 내부 변수나 코드를 직접 참조·수정한다. 가장 나쁘다.', scene: COUPLING.content! }]), (ladder({ title: '결합도 — 약한(좋은) 것부터', en: 'Coupling', top: '약함 · 좋은 설계', bottom: '강함 · 나쁜 설계', hue: [140, 0], items: [
       { scene: COUPLING.data, name: '자료 결합도', en: 'Data Coupling', tag: '필요한 값만', desc: '모듈끼리 꼭 필요한 데이터(값)만 매개변수로 주고받는다. 가장 바람직하다. 예: add(a, b)' },
       { scene: COUPLING.stamp, name: '스탬프 결합도', en: 'Stamp Coupling', tag: '자료 구조 통째로', desc: '배열·구조체·레코드 같은 자료 구조를 통째로 넘기지만, 받는 쪽은 그 일부만 쓴다.' },
       { scene: COUPLING.control, name: '제어 결합도', en: 'Control Coupling', tag: '플래그·제어 신호', desc: '어떻게 처리하라는 제어 신호(플래그)를 넘겨 상대의 내부 흐름을 바꾼다. 예: print(data, mode)' },
       { scene: COUPLING.external, name: '외부 결합도', en: 'External Coupling', tag: '외부 데이터·규약', desc: '외부에서 정한 데이터 형식, 통신 규약, 장치를 함께 참조한다.' },
       { scene: COUPLING.common, name: '공통 결합도', en: 'Common Coupling', tag: '전역 변수 공유', desc: '여러 모듈이 하나의 전역 변수(공통 데이터 영역)를 함께 쓰고 고친다. 하나를 바꾸면 모두 영향을 받는다.' },
       { scene: COUPLING.content, name: '내용 결합도', en: 'Content Coupling', tag: '남의 내부를 직접', desc: '다른 모듈의 내부 변수나 코드를 직접 참조·수정한다. 가장 나쁘다.' },
-    ], mnemonic: '외우기: "자스제외공내"' }),
+    ], mnemonic: '외우기: "자스제외공내"' }))()]),
   },
   {
     id: 'cohesion', name: '응집도', en: 'Cohesion', cat: 'design',
     summary: '모듈 "안"의 요소들이 하나의 목적으로 뭉친 정도. 강할수록 좋다: 기능적 > 순차적 > 교환적 > 절차적 > 시간적 > 논리적 > 우연적.',
     match: ['응집도', 'Cohesion'],
-    make: ladder({ title: '응집도 — 강한(좋은) 것부터', en: 'Cohesion', top: '강함 · 좋은 설계', bottom: '약함 · 나쁜 설계', hue: [140, 0], items: [
+    make: () => stack([sceneTabs('응집도 장면', 'Cohesion', [{ name: '기능적 응집도', en: 'Functional', desc: '모든 요소가 하나의 기능을 위해 함께 동작한다. 가장 바람직하다.', scene: COHESION.functional! }, { name: '순차적 응집도', en: 'Sequential', desc: '한 활동의 출력이 다음 활동의 입력이 된다. 예: 읽기 → 검증 → 저장', scene: COHESION.sequential! }, { name: '교환적 응집도', en: 'Communicational', desc: '같은 입력이나 출력 데이터를 쓰는 서로 다른 기능이 모여 있다. 통신적 응집도라고도 한다.', scene: COHESION.communicational! }, { name: '절차적 응집도', en: 'Procedural', desc: '여러 기능을 정해진 순서대로 수행하도록 모아 놓았다(데이터는 주고받지 않는다).', scene: COHESION.procedural! }, { name: '시간적 응집도', en: 'Temporal', desc: '같은 시간대에 실행되는 것끼리 모였다. 예: 초기화 모듈', scene: COHESION.temporal! }, { name: '논리적 응집도', en: 'Logical', desc: '성격이 비슷한 처리를 한데 모으고 플래그로 하나를 골라 실행한다.', scene: COHESION.logical! }, { name: '우연적 응집도', en: 'Coincidental', desc: '서로 아무 관련 없는 것들이 우연히 모여 있다. 가장 나쁘다.', scene: COHESION.coincidental! }]), (ladder({ title: '응집도 — 강한(좋은) 것부터', en: 'Cohesion', top: '강함 · 좋은 설계', bottom: '약함 · 나쁜 설계', hue: [140, 0], items: [
       { scene: COHESION.functional, name: '기능적 응집도', en: 'Functional', tag: '하나의 기능', desc: '모든 요소가 하나의 기능을 위해 함께 동작한다. 가장 바람직하다.' },
       { scene: COHESION.sequential, name: '순차적 응집도', en: 'Sequential', tag: '출력 → 다음 입력', desc: '한 활동의 출력이 다음 활동의 입력이 된다. 예: 읽기 → 검증 → 저장' },
       { scene: COHESION.communicational, name: '교환적 응집도', en: 'Communicational', tag: '같은 입출력 공유', desc: '같은 입력이나 출력 데이터를 쓰는 서로 다른 기능이 모여 있다. 통신적 응집도라고도 한다.' },
@@ -34,7 +35,7 @@ export const DESIGN: Concept[] = [
       { scene: COHESION.temporal, name: '시간적 응집도', en: 'Temporal', tag: '같은 시점', desc: '같은 시간대에 실행되는 것끼리 모였다. 예: 초기화 모듈' },
       { scene: COHESION.logical, name: '논리적 응집도', en: 'Logical', tag: '비슷한 성격', desc: '성격이 비슷한 처리를 한데 모으고 플래그로 하나를 골라 실행한다.' },
       { scene: COHESION.coincidental, name: '우연적 응집도', en: 'Coincidental', tag: '관련 없음', desc: '서로 아무 관련 없는 것들이 우연히 모여 있다. 가장 나쁘다.' },
-    ], mnemonic: '외우기: "기순교절시논우" — 좋은 설계는 결합도는 낮게, 응집도는 높게' }),
+    ], mnemonic: '외우기: "기순교절시논우" — 좋은 설계는 결합도는 낮게, 응집도는 높게' }))()]),
   },
   {
     id: 'modularity', name: '모듈화와 팬인·팬아웃', en: 'Modularity · Fan-In · Fan-Out', cat: 'design',
