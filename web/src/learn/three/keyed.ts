@@ -29,6 +29,8 @@ export class Keyed {
   get(key: string): Object3D | undefined { return this.objs.get(key); }
   has(key: string): boolean { return this.objs.has(key); }
   keys(): string[] { return [...this.objs.keys()]; }
+  /** 이름표가 조건에 맞는 물체들 */
+  matching(f: (key: string) => boolean): Object3D[] { return [...this.objs].filter(([k]) => f(k)).map(([, o]) => o); }
   /** 이름표 앞부분이 같은 물체들 */
   starting(prefix: string): Object3D[] { return [...this.objs].filter(([k]) => k.startsWith(prefix)).map(([, o]) => o); }
 

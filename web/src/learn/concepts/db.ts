@@ -3,7 +3,8 @@ import { board } from '../templates/board';
 import { ladder } from '../templates/ladder';
 import { seq } from '../templates/seq';
 import { stack, tabs } from '../core';
-import { joins, keys, relAlgebra, relTerms } from '../custom/db';
+import { joins, relAlgebra } from '../custom/db';
+import { integrityLab, keysLab, relTermsLab } from '../three/dbLabs';
 import { hashTable } from '../custom/misc';
 import { sqlLab } from '../three/sqlLab';
 import { notationViz, treeViz } from '../custom/sims';
@@ -14,7 +15,7 @@ export const DB: Concept[] = [
     id: 'relterms', name: '관계 데이터 모델 용어', en: 'Tuple · Attribute · Domain · Degree · Cardinality', cat: 'db',
     summary: '표 하나가 릴레이션, 행이 튜플, 열이 속성. 튜플 수가 카디널리티, 속성 수가 차수, 속성이 가질 수 있는 값의 집합이 도메인이다.',
     match: ['튜플', '카디널리티', '차수', '디그리', '도메인', '릴레이션 인스턴스', '릴레이션 스키마', 'Attribute', '속성', '열(column)'],
-    make: relTerms,
+    make: relTermsLab,
   },
   {
     id: 'relalg', name: '관계 대수', en: 'Relational Algebra', cat: 'db',
@@ -38,7 +39,7 @@ export const DB: Concept[] = [
     id: 'keys', name: '키', en: 'Key', cat: 'db',
     summary: '슈퍼키(유일성) ⊃ 후보키(유일성 + 최소성) ⊃ 기본키·대체키. 외래키는 다른 테이블의 기본키를 참조한다.',
     match: ['슈퍼키', '후보키', '기본키', '대체키', '외래키', '유일성', '최소성', 'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES', 'Candidate Key', 'Super Key'],
-    make: keys,
+    make: keysLab,
   },
   {
     id: 'normalization', name: '정규화와 이상 현상', en: 'Normalization · Anomaly', cat: 'db',
@@ -99,11 +100,11 @@ export const DB: Concept[] = [
     id: 'integrity', name: '무결성 제약 조건', en: 'Integrity Constraint', cat: 'db',
     summary: '개체 무결성(기본키는 NULL·중복 불가), 참조 무결성(외래키는 참조하는 기본키 값이거나 NULL), 도메인 무결성(값의 범위).',
     match: ['무결성 제약', '개체 무결성', '참조 무결성', '도메인 무결성', 'CASCADE', '키 무결성', '무결성'],
-    make: board({ title: '무결성 제약 조건', groups: [
+    make: () => stack([integrityLab(), board({ title: '무결성 제약 조건 정리', groups: [
       { name: '개체 무결성', en: 'Entity Integrity', hue: 210, items: [{ name: '기본키 NULL ✕', desc: 'INSERT INTO 학생 VALUES (NULL, …) → 위반' }, { name: '기본키 중복 ✕', desc: '학번 1001이 이미 있는데 또 넣으면 위반' }] },
       { name: '참조 무결성', en: 'Referential Integrity', hue: 30, items: [{ name: '외래키는 존재하는 값만', desc: '학과에 없는 D9를 학생.학과코드에 넣으면 위반' }, { name: 'ON DELETE CASCADE', desc: '참조되는 행을 지우면 참조하는 행도 함께 삭제' }, { name: 'RESTRICT · SET NULL', desc: '삭제 거부 / 참조하는 값을 NULL로' }] },
       { name: '도메인 무결성', en: 'Domain Integrity', hue: 140, items: [{ name: '값의 타입·범위', desc: '학년은 1~4만 → CHECK (학년 BETWEEN 1 AND 4)' }] },
-    ] }),
+    ], quiz: false })()]),
   },
   {
     id: 'schema', name: '스키마와 데이터 모델', en: 'Schema · Data Model', cat: 'db',

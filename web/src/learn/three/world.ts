@@ -145,6 +145,13 @@ export class World {
     });
   }
 
+  /** x0~x1, z0~z1 범위가 화면에 다 들어오게 카메라를 옮긴다 */
+  fit(x0: number, x1: number, z0: number, z1: number, ms = 800) {
+    const half = Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * this.camera.aspect);
+    const d = Math.max(7, ((x1 - x0) / 2 / Math.tan(half)) * 1.45, (z1 - z0) * 1.3);
+    this.look(new Vector3((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.4), d, ms);
+  }
+
   // ── 만들기 ──
 
   /** 둥근 블록(바닥이 y=0). top: 윗면 글자 */
