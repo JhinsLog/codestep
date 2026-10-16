@@ -2,10 +2,11 @@
 // 언어마다 다른 것은 LangConfig(편집기 문법, 예제, 실행기)뿐이고, 화면은 Trace만 보고 그린다.
 import type { Extension } from '@codemirror/state';
 import { CodeEditor } from '../view/editor';
-import { Stage, el, type StageView } from '../view/stage';
-import { TERMS, narrate, narrationView, type Spot, type Term } from '../view/narrate';
+import { Stage, el, showValue, type StageView } from '../view/stage';
+import { TERMS, narrate, narrationText, narrationView, type Spot, type Term } from '../view/narrate';
+import { askPanel } from '../view/ask';
 import { Session } from '../trace/session';
-import type { Trace } from '../trace/types';
+import type { HeapObj, Trace } from '../trace/types';
 import { runCode, LockedError, loginUrl } from '../api';
 import type { Sample } from '../java/samples';
 
@@ -123,6 +124,35 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     legendBox.append(defBox);
   }
   narrBox.append(el('p', 'muted small', '실행하면 단계마다 "방금 무슨 일이 일어났는지"를 여기서 풀어 줍니다.'));
+  // ── AI 질문: 지금 화면을 글로 정리해 함께 보낸다 ──
+  const screenContext = (): string => {
+    const out: string[] = [];
+    const sample = ui.sample.selectedOptions[0]?.textContent ?? '';
+    const step = session?.step;
+    const lines = (session && trace ? sourceLines : editor.doc.split('\n')).slice(0, 300);
+    out.push(`[화면] ${lang.name} 코드 연습${sample ? ` · 예제 "${sample}"` : ''}${step && session ? ` · ${session.cur + 1}/${session.steps.length}단계 · ${step.line}줄 ${EVENT_LABEL[step.event]}` : ' · 아직 실행 전(코드 편집 중)'}`);
+    out.push('[코드]');
+    lines.forEach((ln, i) => out.push(`${String(i + 1).padStart(3)}: ${ln}${step && i + 1 === step.line ? '   ← 지금 위치' : ''}`));
+    if (step && session && trace) {
+      const heap = step.heap;
+      out.push('[호출 스택] (아래가 바깥, 위가 지금 실행 중)');
+      step.frames.slice().reverse().forEach((f) => out.push(`- ${f.cls ? `${f.cls}.` : ''}${f.fn}() ${f.line}줄: ${f.locals.map((v) => `${v.type} ${v.name} = ${showValue(v.value, heap)}`).join(', ') || '지역 변수 없음'}`));
+      const objs = Object.entries(heap);
+      out.push('[힙 객체]');
+      if (!objs.length) out.push('- 없음');
+      const desc = (o: HeapObj) => o.kind === 'object' ? `{ ${o.fields.map((f) => `${f.name} = ${showValue(f.value, heap)}`).join(', ')} }`
+        : o.kind === 'map' ? `{ ${o.entries.map(([k, v]) => `${showValue(k, heap)}: ${showValue(v, heap)}`).join(', ')} }`
+          : 'items' in o ? `[${o.items.map((v) => showValue(v, heap)).join(', ')}]${o.items.length < o.len ? ` …(${o.len}개)` : ''}` : '(내부 생략)';
+      for (const [id, o] of objs.slice(0, 40)) out.push(`- #${id} ${o.type}: ${desc(o)}`);
+      if (step.ret) out.push(`[반환값] ${showValue(step.ret, heap)}`);
+      if (step.exception) out.push(`[예외] ${step.exception}`);
+      const printed = trace.stdout.slice(0, step.out);
+      out.push(`[지금까지 출력] ${printed ? JSON.stringify(printed.slice(-1500)) : '(없음)'}`);
+      out.push(`[방금 단계 해설]\n${narrationText(narrate(step, session.steps[session.cur - 1], sourceLines, trace.stdout, lang.id))}`);
+    }
+    return out.join('\n');
+  };
+  legendBox.after(askPanel(screenContext));
   stage.clear();
   let disposed = false;
   let sourceLines: string[] = [];

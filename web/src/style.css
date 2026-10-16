@@ -646,3 +646,17 @@ tr.current td { background: var(--accent-soft); font-weight: 700; }
 .narr-def { flex-basis: 100%; padding: 8px 12px; border-radius: 9px; background: var(--changed); border: 1px solid var(--changed-line); font-size: 13px; line-height: 1.6; }
 .spot { animation: spot-pulse 1.8s ease-out; border-radius: 8px; }
 @keyframes spot-pulse { 0%, 60% { box-shadow: 0 0 0 3px #facc15, 0 0 18px #facc15aa; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ── AI 질문 창 (view/ask.ts) ── */
+.ask { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.ask-sum { cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: 13.5px; list-style: revert; }
+.ask-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--fail-text); vertical-align: middle; }
+.ask-dot.on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.ask-dot.idle { background: #f59e0b; }
+.ask-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ask-body p { margin: 0; }
+.ask-row { display: flex; gap: 8px; align-items: flex-start; }
+.ask-q { flex: 1; resize: vertical; min-height: 2.6em; font: 13.5px/1.5 inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.ask-code { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.ask-ans { white-space: pre-wrap; font-size: 13.5px; line-height: 1.7; padding: 10px 12px; border-radius: 9px; background: var(--bg); border: 1px solid var(--line); max-height: 50vh; overflow: auto; }
+.ask-ans.err { color: var(--error); background: var(--error-soft); }

@@ -140,3 +140,8 @@ export function narrationView(n: Narration, onTerm: (t: Term, spot?: Spot) => vo
   return [h, ul];
 }
 
+
+/** 해설을 한 덩어리 글로 (AI에게 화면 정보로 보낼 때) */
+export function narrationText(n: Narration): string {
+  return [n.head, ...n.lines.map((ln) => `- ${ln.map((p) => (typeof p === 'string' ? p : p.text ?? TERMS[p.term].name)).join('')}`)].join('\n');
+}

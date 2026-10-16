@@ -3,6 +3,7 @@
 //   POST /api/run      {"lang":"java","code":"..."}  → Trace
 //   GET  /api/health   상태
 //   GET  /api/auth     Access 로그인 후 원래 화면으로 돌려보낸다
+//   /api/ask·/api/ai/  AI 질문 중계 (server/ai.mjs)
 //
 // 127.0.0.1에서만 듣고, 바깥 요청은 server/static.mjs가 /api/로 넘겨준다.
 //
@@ -12,6 +13,7 @@ import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { createPublicKey, verify as verifySig, randomBytes } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
+import { AI_ENABLED, handleAi } from './ai.mjs';
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT ?? 5181);
@@ -207,6 +209,7 @@ function readBody(req) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   try {
+    if (await handleAi(req, res, url)) return;
     if (req.method === 'GET' && url.pathname === '/api/health') {
       send(res, 200, { ok: true, open: OPEN, running, waiting: waiting.length, maxRunning: MAX_RUNNING }, req);
       return;
@@ -273,5 +276,5 @@ const server = createServer(async (req, res) => {
 
 server.requestTimeout = 60_000;
 server.listen(PORT, HOST, () => {
-  console.log(`codestep api: http://${HOST}:${PORT} open=${OPEN} access=${TEAM && AUD ? 'configured' : 'NOT configured (locked)'}`);
+  console.log(`codestep api: http://${HOST}:${PORT} open=${OPEN} access=${TEAM && AUD ? 'configured' : 'NOT configured (locked)'} ai=${AI_ENABLED ? 'on' : 'off'}`);
 });
