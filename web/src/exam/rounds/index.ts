@@ -7,6 +7,7 @@ import type { Round } from '../problems';
 import { Y2026 } from './y2026';
 import { Y2025 } from './y2025';
 import { Y2024 } from './y2024';
+import { Y2023 } from './y2023';
 
 /** 최근 회차부터 */
-export const ROUNDS: Round[] = [...Y2026, ...Y2025, ...Y2024];
+export const ROUNDS: Round[] = [...Y2026, ...Y2025, ...Y2024, ...Y2023];
