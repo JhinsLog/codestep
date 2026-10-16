@@ -26,16 +26,26 @@ static void csEmitString(const unsigned char *z, int n){
   putchar('"');
 }
 
+/* 레지스터 값을 내보낸다. sqlite3_value_text() 같은 API는 값을 문자열로 바꾸거나
+** 복사본을 만들며 레지스터를 고치므로(실행 중인 VM의 상태가 바뀐다) 쓰지 않고,
+** Mem의 필드를 읽기만 한다. RIGHT JOIN처럼 레지스터를 다시 쓰는 쿼리에서
+** API로 읽으면 VM이 망가졌다. */
 static void csEmitMem(Mem *pMem){
-  sqlite3_value *v = (sqlite3_value*)pMem;
-  switch( sqlite3_value_type(v) ){
-    case SQLITE_INTEGER: printf("%lld", sqlite3_value_int64(v)); break;
-    case SQLITE_FLOAT:   printf("%.17g", sqlite3_value_double(v)); break;
-    case SQLITE_TEXT:
-      csEmitString(sqlite3_value_text(v), sqlite3_value_bytes(v));
-      break;
-    case SQLITE_BLOB:    printf("{\"blob\":%d}", sqlite3_value_bytes(v)); break;
-    default:             printf("null"); break;
+  u16 f = pMem->flags;
+  if( f & MEM_Null ){
+    printf("null");
+  }else if( f & MEM_Int ){
+    printf("%lld", pMem->u.i);
+  }else if( f & MEM_IntReal ){
+    printf("%.17g", (double)pMem->u.i);
+  }else if( f & MEM_Real ){
+    printf("%.17g", pMem->u.r);
+  }else if( (f & MEM_Str) && pMem->z ){
+    csEmitString((const unsigned char*)pMem->z, pMem->n);
+  }else if( f & MEM_Blob ){
+    printf("{\"blob\":%d}", pMem->n);
+  }else{
+    printf("null");
   }
 }
 

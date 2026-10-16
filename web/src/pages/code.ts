@@ -71,6 +71,7 @@ const TEMPLATE = `
 export interface CodePreset {
   code: string;
   header?: HTMLElement;   // 화면 위에 붙일 머리 (문제 정보)
+  storeKey?: string;      // 고친 코드를 임시 저장할 곳 (없으면 저장하지 않는다)
 }
 
 export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePreset): () => void {
@@ -90,6 +91,11 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     play: q<HTMLButtonElement>('play'),
     speed: q<HTMLSelectElement>('speed'),
   };
+  // 문제 코드를 고쳐 보다가 원래대로 돌리는 버튼 (문제 풀이 화면)
+  const reset = el('button', '', '↺ 문제 코드로');
+  reset.title = '고친 코드를 버리고 문제의 원래 코드로 되돌립니다';
+  reset.hidden = true;
+  ui.sample.after(reset);
   const stageHost = q('stage');
   let stage: StageView = new Stage(stageHost);
   stage.clear();
@@ -100,14 +106,16 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
   let session: Session | null = null;
   let errorLines: number[] = [];
 
+  // 고친 코드: 언어 화면은 언어마다, 문제 풀이 화면은 문제마다 따로 저장한다
+  const storeKey = preset ? preset.storeKey : STORE_KEY;
   let saved: string | null = null;
-  if (!preset) {
-    try { saved = localStorage.getItem(STORE_KEY); } catch { /* 저장소를 못 쓰는 환경 */ }
+  if (storeKey) {
+    try { saved = localStorage.getItem(storeKey); } catch { /* 저장소를 못 쓰는 환경 */ }
   }
 
   const editor = new CodeEditor({
     parent: q('editor'),
-    doc: preset?.code ?? saved ?? SAMPLES[0]!.code,
+    doc: saved ?? preset?.code ?? SAMPLES[0]!.code,
     language: lang.language(),
     onLineClick: (line) => {
       if (!session) return;
@@ -124,7 +132,15 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
       for (const l of lines) session.breakpoints.add(l);
     },
     onChange: (doc) => {
-      if (preset) return;
+      if (preset) {
+        if (!preset.storeKey) return;
+        try {
+          if (doc === preset.code) localStorage.removeItem(preset.storeKey);
+          else localStorage.setItem(preset.storeKey, doc);
+        } catch { /* 무시 */ }
+        reset.hidden = doc === preset.code;
+        return;
+      }
       try { localStorage.setItem(STORE_KEY, doc); } catch { /* 무시 */ }
       // 불러온 예제를 고치면 더는 그 예제가 아니다 → 선택 표시를 지운다 (같은 예제를 다시 고를 수 있게)
       const cur = SAMPLES[Number(ui.sample.value)];
@@ -371,6 +387,12 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
   void setView(viewMode);
   if (preset) {
     ui.sample.hidden = true;
+    reset.hidden = editor.doc === preset.code;
+    reset.addEventListener('click', () => {
+      stopDebugging();
+      editor.setDoc(preset.code);
+      void run();
+    });
     void run();
   }
   return () => {

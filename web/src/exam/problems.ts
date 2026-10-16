@@ -6,21 +6,33 @@
 //
 // 코드 문제의 정답은 실제 실행 결과로 검증했다 (tools/exam-check). 이론 문제의 정답은
 // 화면의 시뮬레이터가 계산한 값과 같다 (answer.ts).
+//
+// 여기 있는 것은 유형별 연습 문제다. 회차별 모의고사 문제는 rounds/에 있다.
 import type { PageAlgo } from './sims/paging';
 import type { Proc, SchedAlgo } from './sims/sched';
 import type { Order } from './sims/tree';
 
-export type Category = 'c' | 'java' | 'python' | 'sql' | 'os' | 'ds' | 'net';
+export type Category = 'c' | 'java' | 'python' | 'sql' | 'db' | 'design' | 'dev' | 'os' | 'net' | 'sec' | 'ds';
 
 export const CATEGORIES: { id: Category; name: string; desc: string }[] = [
   { id: 'c', name: 'C 언어', desc: '포인터·배열·구조체·재귀 — 실기에서 가장 많이 나온다' },
   { id: 'java', name: 'Java', desc: '상속·오버라이딩·static·생성자 순서·예외' },
   { id: 'python', name: 'Python', desc: '슬라이싱·딕셔너리·집합·클래스' },
-  { id: 'sql', name: 'SQL', desc: 'GROUP BY·HAVING·JOIN·서브쿼리 결과 쓰기' },
-  { id: 'os', name: '운영체제', desc: '페이지 교체·CPU 스케줄링' },
+  { id: 'sql', name: 'SQL', desc: 'GROUP BY·JOIN·서브쿼리 결과 쓰기와 SQL 작성' },
+  { id: 'db', name: '데이터베이스', desc: '정규화·관계대수·트랜잭션·키·무결성' },
+  { id: 'design', name: '소프트웨어 설계', desc: '디자인 패턴·결합도·응집도·UML·요구사항' },
+  { id: 'dev', name: '개발·테스트', desc: '테스트 기법·커버리지·형상 관리·인터페이스' },
+  { id: 'os', name: '운영체제', desc: '페이지 교체·CPU 스케줄링·리눅스 권한' },
+  { id: 'net', name: '네트워크', desc: '서브넷 계산·프로토콜·라우팅·OSI' },
+  { id: 'sec', name: '보안·신기술', desc: '공격 기법·암호 알고리즘·접근 통제·신기술 용어' },
   { id: 'ds', name: '자료구조', desc: '트리 순회·수식 표기 변환' },
-  { id: 'net', name: '네트워크', desc: '서브넷 계산' },
 ];
+
+/** 빈칸 하나: 화면 표시 이름(①, ② …)과 인정하는 답들 (첫 번째가 대표 답) */
+export interface Blank { label: string; accept: string[] }
+
+/** 문제에 딸린 표 (관계대수·정규화 문제 등) */
+export interface Table { name?: string; cols: string[]; rows: (string | number)[][] }
 
 interface Base {
   id: string;
@@ -28,17 +40,37 @@ interface Base {
   title: string;
   question: string;
   explain: string;   // 채점 뒤 보여 주는 해설
+  round?: string;    // 회차 문제면 회차 id ('2024-2')
+  no?: number;       // 회차 안의 문항 번호
+  trend?: boolean;   // 그 회차의 문항 개념을 확인하지 못해 같은 시기 경향으로 채운 문항
 }
 
 export type Problem =
   | Base & { kind: 'code'; lang: 'c' | 'java' | 'python'; code: string; answer: string }
-  | Base & { kind: 'sql'; setup: string; query: string; answer: string }
+  // 코드 빈칸: code 안의 빈칸 표시(blanks[].label)를 대표 답으로 채우면 out이 출력된다
+  | Base & { kind: 'code-blank'; lang: 'c' | 'java' | 'python'; code: string; blanks: Blank[]; out: string }
+  // SQL 실행 결과 쓰기. count면 결과 행(튜플)의 개수를 묻는다
+  | Base & { kind: 'sql'; setup: string; query: string; answer: string; count?: boolean }
+  // SQL 작성: 쓴 SQL을 실제로 실행해 모범 답안과 결과를 비교한다. check는 실행 뒤 상태를 확인하는 조회문
+  | Base & { kind: 'sql-write'; setup: string; answer: string; check?: string }
+  // 용어·빈칸·보기 선택·계산 단답
+  | Base & { kind: 'short'; blanks: Blank[]; options?: string[]; tables?: Table[]; pre?: string }
   | Base & { kind: 'paging'; refs: number[]; frames: number; algo: PageAlgo }
   | Base & { kind: 'sched'; procs: Proc[]; algo: SchedAlgo; quantum?: number; ask: 'avgWait' | 'avgTurn' }
   | Base & { kind: 'traverse'; level: string; order: Order }
   | Base & { kind: 'notation'; infix: string; to: 'post' | 'pre' }
   | Base & { kind: 'subnet'; ip: string; prefix: number; ask: 'network' | 'broadcast' | 'hosts' | 'mask' }
   | Base & { kind: 'subnet-div'; base: string; prefix: number; count: number; nth: number; ask: 'network' | 'broadcast' };
+
+/** 회차 모의고사 */
+export interface Round {
+  id: string;          // '2024-2'
+  label: string;       // '2024년 2회'
+  pass?: number;       // 합격률(%)
+  level: 1 | 2 | 3 | 4 | 5;   // 체감 난이도 (1 쉬움 … 5 매우 어려움)
+  note: string;        // 이 회차의 특징
+  problems: Problem[]; // 20문항
+}
 
 const OUT = '다음 프로그램의 실행 결과를 쓰시오.';
 
@@ -648,4 +680,3 @@ WHERE는 묶기 전 행을, HAVING은 묶은 뒤 그룹을 거른다.`,
   },
 ];
 
-export const byId = (id: string): Problem | undefined => PROBLEMS.find((p) => p.id === id);

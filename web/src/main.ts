@@ -3,11 +3,21 @@ import { isDark, setDark, onTheme } from './theme';
 import { mountHome, LANGS } from './pages/home';
 import { mountJava } from './pages/java';
 import { mountSql } from './pages/sql';
-import { mountExam } from './pages/exam';
 import { mountPython } from './pages/python';
 import { mountC } from './pages/c';
 
 type Mount = (root: HTMLElement, path: string) => () => void;
+
+/** 정보처리기사 모드는 문제 데이터가 커서 들어갈 때 따로 불러온다 */
+const mountExam: Mount = (root, path) => {
+  let gone = false;
+  let cleanup = () => {};
+  root.replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: '문제를 불러오는 중…' }));
+  void import('./pages/exam').then((m) => {
+    if (!gone) cleanup = m.mountExam(root, path);
+  });
+  return () => { gone = true; cleanup(); };
+};
 
 // 앞부분이 같은 주소는 그 화면이 나머지를 처리한다 (/exam/<문제>/solve 등)
 const ROUTES: Record<string, { mount: Mount; title: string; prefix?: boolean }> = {
@@ -77,7 +87,8 @@ document.addEventListener('click', (e) => {
   const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-link]');
   if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
   e.preventDefault();
-  if (a.pathname !== location.pathname) history.pushState(null, '', a.pathname);
+  const to = a.pathname + a.hash;
+  if (to !== location.pathname + location.hash) history.pushState(null, '', to);
   show();
 });
 window.addEventListener('popstate', show);

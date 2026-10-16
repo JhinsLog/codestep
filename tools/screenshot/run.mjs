@@ -63,6 +63,9 @@ for (const sc of plan) {
     else if (a.click) await page.click(a.click);
     else if (a.fill) await page.fill(a.fill[0], a.fill[1]);
     else if (a.wait) await page.waitForTimeout(a.wait);
+    else if (a.reload) await page.reload();
+    else if (a.type) await page.locator(a.type[0]).first().pressSequentially(a.type[1]);
+    else if (a.scroll) await page.evaluate((s) => document.querySelector(s)?.scrollIntoView(), a.scroll);
     else if (a.hover) await page.mouse.move(a.hover[0], a.hover[1]);
     else if (a.probe) {
       for (let k = 0; k < 4; k++) {
@@ -82,7 +85,7 @@ for (const sc of plan) {
     }
     else if (a.shot) {
       const clip = a.el ? await page.locator(a.el).boundingBox() : undefined;
-      const t0 = Date.now(); await page.screenshot({ path: `${SHOT}/out/${sc.name}-${a.shot}.png`, clip, timeout: 180000 }); console.log(`[${sc.name}] screenshot ${Date.now() - t0}ms`);
+      const t0 = Date.now(); await page.screenshot({ path: `${SHOT}/out/${sc.name}-${a.shot}.png`, clip, fullPage: !!a.full, timeout: 180000 }); console.log(`[${sc.name}] screenshot ${Date.now() - t0}ms`);
       const pos = await page.locator('[data-id=pos]').textContent({ timeout: 300 }).catch(() => '');
       console.log(`[${sc.name}] shot ${a.shot}: ${pos}`);
     }
