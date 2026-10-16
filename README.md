@@ -22,6 +22,7 @@
 | `runners/python/` | Python 실행기: sys.settrace로 줄 단위 추적 |
 | `runners/c/` | C 실행기: gcc로 컴파일, gdb로 모든 줄에 중단점을 걸어 추적. 포인터를 주소·배열 칸·변수로 풀고 malloc/free를 기록 |
 | `web/src/exam/` | 정보처리기사 모드: 유형별 연습 문제, 2020~2026년 회차 모의고사(`rounds/`, 기출 개념을 새 지문·코드로 재구성), 채점(SQL 작성은 실제 실행으로 비교), 답안 임시 저장(`store.ts`, localStorage), 이론 시뮬레이터 |
+| `web/src/learn/` | 정보처리기사 학습 모드(/learn): 개념 그림 60개(OSI 캡슐화 애니메이션, 순서도, 분류판, 관계 대수, 커버리지 실험판 …)와 문제-개념 자동 연결. 코드 문제는 디버거를 붙여 한 줄씩 실행하며 푼다 |
 | `tools/exam-check/` | 정보처리기사 코드·SQL 문제의 정답을 실제 실행 결과와 대조 (`check.mts r2024-`처럼 회차만 골라 돌릴 수 있다) |
 | `spikes/sqlite-vdbe/` | 계측한 SQLite 엔진. 실행 루프(VDBE)의 opcode를 행 단위로 기록 (브라우저 WASM) |
 | `server/static.mjs` | `web/dist` 서빙 + `/api/`를 실행 API로 전달 (127.0.0.1:5180) |

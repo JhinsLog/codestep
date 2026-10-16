@@ -296,7 +296,7 @@ function showResult(box: HTMLElement, p: Problem, s: number | null, cleanup: (()
 }
 
 /** 답 칸들. 바뀔 때마다 onChange(칸별 값) */
-function answerForm(p: Problem, initial: string[], onChange: (vals: string[]) => void) {
+export function answerForm(p: Problem, initial: string[], onChange: (vals: string[]) => void) {
   const form = el('form', 'ex-answer');
   const inputs: (HTMLInputElement | HTMLTextAreaElement)[] = [];
   const fields = fieldsOf(p);
@@ -336,7 +336,7 @@ function answerForm(p: Problem, initial: string[], onChange: (vals: string[]) =>
 }
 
 /** "임시 저장됨 14:03:21" 표시. restored: 다시 열었을 때 불러온 저장 시각 */
-function saveIndicator(node: HTMLElement, restored?: number | true): () => void {
+export function saveIndicator(node: HTMLElement, restored?: number | true): () => void {
   const paint = () => {
     const s = store.saveStatus();
     node.classList.toggle('error', s.failed);
@@ -633,7 +633,7 @@ function setupTables(setup: string): HTMLElement {
 }
 
 /** 문제에 딸린 자료: 코드, 표, 보기, 참조열, 트리 … */
-function material(p: Problem): HTMLElement {
+export function material(p: Problem): HTMLElement {
   const box = el('div', 'ex-material');
   switch (p.kind) {
     case 'code':
@@ -703,7 +703,7 @@ function material(p: Problem): HTMLElement {
   return box;
 }
 
-function simulator(p: Problem): Sim | null {
+export function simulator(p: Problem): Sim | null {
   switch (p.kind) {
     case 'paging': return pagingSim(p.refs, p.frames, p.algo);
     case 'sched': return schedSim(p.procs, p.algo, p.quantum);

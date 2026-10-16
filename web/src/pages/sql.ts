@@ -193,7 +193,8 @@ export function mountSql(root: HTMLElement, preset?: SqlPreset): () => void {
   const onKey = (e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void run();
+      // 이 화면의 SQL 칸에서만 Ctrl+Enter로 실행 (학습 화면의 답 칸은 제외)
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && root.contains(e.target as Node) && (e.target as HTMLElement).dataset.id) void run();
       return;
     }
     if (e.key === 'ArrowRight') go(cur + 1);

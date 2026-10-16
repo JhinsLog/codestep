@@ -19,10 +19,22 @@ const mountExam: Mount = (root, path) => {
   return () => { gone = true; cleanup(); };
 };
 
+/** 정보처리기사 학습 모드 (개념 그림이 많아 들어갈 때 따로 불러온다) */
+const mountLearn: Mount = (root, path) => {
+  let gone = false;
+  let cleanup = () => {};
+  root.replaceChildren(Object.assign(document.createElement('p'), { className: 'muted', textContent: '학습 화면을 불러오는 중…' }));
+  void import('./pages/learn').then((m) => {
+    if (!gone) cleanup = m.mountLearn(root, path);
+  });
+  return () => { gone = true; cleanup(); };
+};
+
 // 앞부분이 같은 주소는 그 화면이 나머지를 처리한다 (/exam/<문제>/solve 등)
 const ROUTES: Record<string, { mount: Mount; title: string; prefix?: boolean }> = {
   '/': { mount: mountHome, title: '' },
-  '/exam': { mount: mountExam, title: '정보처리기사', prefix: true },
+  '/learn': { mount: mountLearn, title: '정보처리기사 학습', prefix: true },
+  '/exam': { mount: mountExam, title: '정보처리기사 모의고사', prefix: true },
   '/java': { mount: (r) => mountJava(r), title: 'Java' },
   '/c': { mount: (r) => mountC(r), title: 'C' },
   '/python': { mount: (r) => mountPython(r), title: 'Python' },
@@ -40,11 +52,11 @@ const crumb = document.getElementById('crumb')!;
 const nav = document.getElementById('nav')!;
 let unmount: (() => void) | null = null;
 
-// 정보처리기사 모드는 언어들과 따로, 맨 앞에
-{
+// 정보처리기사(학습·모의고사)는 언어들과 따로, 맨 앞에
+for (const [text, href] of [['정보처리기사 학습', '/learn'], ['모의고사', '/exam']] as const) {
   const a = document.createElement('a');
-  a.textContent = '정보처리기사';
-  a.href = '/exam';
+  a.textContent = text;
+  a.href = href;
   a.dataset.link = '';
   a.className = 'nav-exam';
   nav.append(a);

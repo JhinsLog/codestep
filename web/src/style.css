@@ -374,8 +374,9 @@ a.button {
 a.button:hover { border-color: var(--accent); }
 a.button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+.exam-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; max-width: 900px; margin: 0 auto 16px; }
 .exam-feature {
-  display: block; max-width: 900px; margin: 0 auto 16px; padding: 20px 22px; border-radius: 14px;
+  display: block; max-width: 900px; margin: 0; padding: 20px 22px; border-radius: 14px;
   border: 1px solid var(--accent); background: linear-gradient(135deg, var(--accent-soft), var(--panel) 70%);
   color: var(--text); text-decoration: none; transition: transform 0.15s;
 }

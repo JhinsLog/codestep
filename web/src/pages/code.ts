@@ -367,9 +367,11 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
 
   const onKey = (e: KeyboardEvent) => {
     const inEditor = (e.target as HTMLElement).closest('.cm-editor') && !session;
+    const tag = (e.target as HTMLElement).tagName;
+    // 학습 화면의 답 칸처럼 편집기 밖의 입력 칸에서 누른 키는 디버거가 가로채지 않는다
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void run(); return; }
     if (!session || inEditor) return;
-    const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.key === ' ' && tag !== 'BUTTON') { e.preventDefault(); setPlaying(!playing); return; }
     const map: Record<string, string> = {
