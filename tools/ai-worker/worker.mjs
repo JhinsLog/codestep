@@ -204,8 +204,8 @@ async function loop() {
   for (;;) {
     // 받을 수 없으면 질문을 가져가지 않는다 → 홈서버 화면에 "AI 꺼짐"으로 보인다
     const r0 = await ready();
-    if (r0.why !== lastWhy) { log(r0.ok ? `질문을 받습니다 (${r0.why}).` : `${r0.why}. 질문을 받지 않고 15초마다 확인합니다.`); lastWhy = r0.why; }
-    if (!r0.ok) { await sleep(15_000); continue; }
+    if (r0.why !== lastWhy) { log(r0.ok ? `질문을 받습니다 (${r0.why}).` : `${r0.why}. 질문을 받지 않고 5초마다 확인합니다.`); lastWhy = r0.why; }
+    if (!r0.ok) { await sleep(5_000); continue; }
     try {
       const r = await fetch(`${BASE}/api/ai/next`, { headers: auth, signal: AbortSignal.timeout(40_000) });
       if (r.status === 401) { console.error('연결 토큰이 거부되었습니다. 토큰 파일을 확인하세요.'); process.exit(3); }

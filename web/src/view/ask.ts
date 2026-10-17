@@ -2,7 +2,7 @@
 // AI 서버의 답을 흘려 받아 보여 준다.
 //   - 넓은 화면에서는 본문을 옆으로 밀고 붙어서(도킹) 코드·그림을 보면서 답을 읽는다. 좁으면 위에 덮는다.
 //   - 답은 글자로만 만든다(HTML로 해석하지 않음). 목록·굵게·코드·"N줄"만 골라 꾸미고, "N줄"을 누르면 그 줄이 빛난다.
-//   - AI 서버가 꺼져 있으면 입력을 잠그고, 상태 점멸 표시로 알린다(열려 있으면 15초, 닫혀 있으면 60초마다 확인).
+//   - AI 서버가 꺼져 있으면 입력을 잠그고, 상태 점멸 표시로 알린다(꺼져 있으면 5초마다, 탭으로 돌아오면 바로 확인).
 import { el } from './stage';
 
 type Live = 'check' | 'on' | 'busy' | 'off' | 'disabled';
@@ -199,19 +199,29 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
     paintEmpty();
   }
   async function status() {
+    lastCheck = Date.now();
     try {
       const s = await (await fetch('/api/ask/status')).json() as { enabled: boolean; online: boolean; queue: number };
       enabled = s.enabled; online = s.enabled && s.online; queueLen = s.queue;
     } catch { online = false; }
     polled = true;
     paint();
+    schedule();
   }
-  let ticks = 0;
-  const timer = setInterval(() => {
-    if (document.hidden) return;
-    ticks++;
-    if (!box.hidden || ticks % 4 === 0) void status();
-  }, 15_000);
+  // 꺼져 있을 때는 자주(5초), 연결된 뒤에는 드물게(창 열림 15초·닫힘 60초) 확인한다.
+  // 다른 창(나히다 등)에서 돌아와 이 탭을 다시 보면 곧바로 확인한다 → 새로고침 없이 상태가 바뀐다.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let gone = false;
+  function schedule() {
+    clearTimeout(timer);
+    if (gone) return;
+    const ms = !(enabled && online) ? 5_000 : box.hidden ? 60_000 : 15_000;
+    timer = setTimeout(() => { if (document.hidden) schedule(); else void status(); }, ms);
+  }
+  let lastCheck = 0;
+  const onBack = () => { if (!document.hidden && Date.now() - lastCheck > 1500) void status(); };
+  document.addEventListener('visibilitychange', onBack);
+  window.addEventListener('focus', onBack);
 
   // ── 빈 대화: 소개와 질문 예 ──
   function paintEmpty() {
@@ -383,7 +393,10 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
 
   return {
     dispose() {
-      clearInterval(timer);
+      gone = true;
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onBack);
+      window.removeEventListener('focus', onBack);
       es?.close();
       window.removeEventListener('resize', layout);
       document.body.classList.remove('ai-docked');
