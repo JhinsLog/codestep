@@ -171,7 +171,7 @@ MODEL_URL=http://127.0.0.1:8080/v1 node tools/ai-worker/worker.mjs             #
 
 ## 홈서버 쪽 (참고)
 
-- 중계: `server/ai.mjs` — `/api/ask`(브라우저, 접근 코드 필요), `/api/ai/next`·`/api/ai/answer/:id`(연결 프로그램, 토큰 필요)
-- 설정: `/etc/codestep/api.env`의 `CODESTEP_AI_WORKER_TOKEN`, `CODESTEP_AI_USER_CODE`. 둘 중 하나라도 없으면 AI는 꺼진다
-- 제한: 시간당 질문 30개(사람당), 대기열 5개, 질문 1,000자·화면 정보 24,000자·답변 16,000자
+- 중계: `server/ai.mjs` — `/api/ask`(브라우저, 누구나. 2026-10-17 접근 코드 없앰), `/api/ai/next`·`/api/ai/answer/:id`(연결 프로그램, 토큰 필요)
+- 설정: `/etc/codestep/api.env`의 `CODESTEP_AI_WORKER_TOKEN`. 없으면 AI는 꺼진다 (`CODESTEP_AI_USER_CODE`는 더 이상 쓰지 않음)
+- 제한: 시간당 질문 30개(사람당)·200개(전체), 대기열 5개, 질문 1,000자·화면 정보 24,000자·답변 16,000자
 - AI에게 보내는 것: 지시문 + 화면 정보(코드, 단계, 호출 스택, 힙, 출력, 해설) + 질문. 대화 기록은 남기지 않는다
