@@ -1,4 +1,4 @@
-// AI 질문 창: 지금 화면 정보(글)와 질문을 홈서버로 보내고, 운영자 PC AI의 답을 흘려 받는다.
+// AI 질문 창: 지금 화면 정보(글)와 질문을 홈서버로 보내고, AI 서버의 답을 흘려 받는다.
 // 접근 코드를 넣은 브라우저에서만 쓸 수 있다(테스트 기간). 답은 글자로만 표시한다(HTML로 해석하지 않음).
 // AI 서버가 꺼져 있으면 질문 칸을 잠그고, 제목 옆 점멸 표시로 상태를 알린다(15초마다 확인).
 import { el } from './stage';
@@ -9,7 +9,7 @@ const setCode = (c: string) => { try { if (c) localStorage.setItem(CODE_KEY, c);
 
 type Live = 'check' | 'on' | 'busy' | 'off' | 'disabled';
 const LIVE_TEXT: Record<Live, string> = { check: '확인 중', on: '연결됨', busy: '답하는 중', off: '꺼짐', disabled: '사용 안 함' };
-const OFF_MSG = 'AI 서버가 지금 꺼져 있어 질문할 수 없습니다. 운영자가 AI를 켜 두었을 때 다시 질문해 주세요.';
+const OFF_MSG = 'AI 서버가 지금 꺼져 있어 질문할 수 없습니다. AI 서버가 켜지면 다시 질문해 주세요.';
 
 /** Enter(↵) 모양 아이콘. 글꼴에 따라 ↵ 글자가 깨지므로 그림으로 그린다 */
 function enterIcon(): SVGSVGElement {
@@ -36,7 +36,7 @@ export function askPanel(context: () => string): HTMLElement {
   const body = el('div', 'ask-body');
   box.append(sum, body);
 
-  const note = el('p', 'muted small', '질문과 지금 화면 정보(코드, 변수 값, 출력)가 운영자 PC의 AI로 전달됩니다. AI는 이 화면에 나온 정보만 근거로 답합니다.');
+  const note = el('p', 'muted small', '질문과 지금 화면 정보(코드, 변수 값, 출력)가 AI 서버로 전달됩니다. AI는 이 화면에 나온 정보만 근거로 답합니다.');
   const codeRow = el('form', 'ask-row');
   const codeIn = el('input', 'ask-code');
   codeIn.type = 'password';
