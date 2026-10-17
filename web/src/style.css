@@ -105,8 +105,8 @@ a { color: var(--accent); }
 .brand { font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -0.01em; }
 .crumb { color: var(--muted); font-weight: 600; }
 .crumb:not(:empty)::before { content: "/ "; }
-.nav { margin-left: auto; display: flex; gap: 4px; }
-.nav a { padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-weight: 600; }
+.nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px; }
+.nav a { white-space: nowrap; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-weight: 600; }
 .nav a[href]:hover { background: var(--bg); color: var(--text); }
 .nav a.active { background: var(--accent-soft); color: var(--accent); }
 .nav a.soon { opacity: 0.45; cursor: default; }

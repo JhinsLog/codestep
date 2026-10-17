@@ -11,6 +11,7 @@ import type { Category, Problem } from '../exam/problems';
 import { answerHint, answerOf, filledCode, score } from '../exam/answer';
 import * as store from '../exam/store';
 import { CAT_ORDER, CONCEPTS, conceptById, conceptsFor, problemsOf, type Concept } from '../learn/concepts';
+import { cramSequence } from '../cram/plan';
 import type { Viz } from '../learn/core';
 import { el } from '../view/stage';
 import '../learn/learn.css';
@@ -214,14 +215,17 @@ const isCode = (p: Problem) => p.kind === 'code' || p.kind === 'code-blank';
 const isSql = (p: Problem) => p.kind === 'sql' || p.kind === 'sql-write';
 
 function renderProblem(root: HTMLElement, p: Problem, cleanup: (() => void)[]) {
-  const list = listOf(p.cat);
+  // ⚡️벼락⚡️에서 들어오면(#cram) 그 페이지의 순서로 이전·다음을 잇는다
+  const cram = location.hash === '#cram' && cramSequence().includes(p);
+  const list = cram ? cramSequence() : listOf(p.cat);
   const idx = list.indexOf(p);
+  const tail = cram ? '#cram' : '';
   const concepts = conceptsFor(p);
 
   // 문제 칸 (모든 유형 공통)
   const qbox = el('section', 'panel learn-q');
   const head = el('div', 'ex-head');
-  head.append(link('/learn', 'exam-back', '← 학습'), el('span', `chip cat-${p.cat}`, catName(p.cat)));
+  head.append(cram ? link('/cram', 'exam-back', '← ⚡️벼락') : link('/learn', 'exam-back', '← 학습'), el('span', `chip cat-${p.cat}`, catName(p.cat)));
   if (p.round) head.append(link(`/exam/round/${p.round}#q${p.no}`, 'chip round-chip', `${roundById(p.round)?.label} ${p.no}번`));
   head.append(el('span', 'muted small', `${idx + 1} / ${list.length}`));
   qbox.append(head, el('h2', 'exam-title', p.title), el('p', 'ex-q', p.question));
@@ -299,8 +303,8 @@ function renderProblem(root: HTMLElement, p: Problem, cleanup: (() => void)[]) {
   const pager = el('nav', 'ex-pager');
   const prev = list[idx - 1];
   const next = list[idx + 1];
-  pager.append(prev ? link(`/learn/${prev.id}`, 'button', `← ${prev.title}`) : el('span'),
-    next ? link(`/learn/${next.id}`, 'button', `${next.title} →`) : link('/learn', 'button', '학습 처음으로'));
+  pager.append(prev ? link(`/learn/${prev.id}${tail}`, 'button', `← ${prev.title}`) : el('span'),
+    next ? link(`/learn/${next.id}${tail}`, 'button', `${next.title} →`) : cram ? link('/cram', 'button', '⚡️벼락으로') : link('/learn', 'button', '학습 처음으로'));
 
   if (isCode(p) || isSql(p)) {
     // 코드·SQL: 위에 문제, 아래에 디버거, 그 아래 관련 개념
