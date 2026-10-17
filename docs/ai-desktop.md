@@ -126,6 +126,13 @@ $env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\to
 MODEL_URL=http://127.0.0.1:8080/v1 node tools/ai-worker/worker.mjs             # macOS·Linux
 ```
 
+- **이 데스크탑에서는 `D:\AI\codestep\start-worker.vbs`를 더블클릭한다.** (2026-10-17 설정)
+  `start-worker.vbs`가 창을 따로 띄워 `run-worker.ps1`(UTF-8 BOM)을 실행하고, 그 안에서 인코딩·환경 변수 두 개를 설정한 뒤
+  위 명령을 돌린다. 출력은 `D:\AI\codestep\worker.log`에도 남는다.
+- Windows 함정 (직접 띄울 때):
+  - PowerShell 5.1 창에서는 한글이 깨진다 → 실행 전에 `[Console]::OutputEncoding=[Text.Encoding]::UTF8`.
+    로그는 `Tee-Object`(5.1은 UTF-16으로 씀) 대신 `Add-Content -Encoding UTF8`.
+  - Claude Code 도구에서 `Start-Process`로 띄운 창은 그 도구 세션이 정리될 때 같이 꺼진다 → `WScript.Shell.Run`(vbs)으로 분리해 띄운다.
 - 창을 열어 둔 동안만 codestep 질문에 답한다. 끝낼 때는 Ctrl+C.
 - 질문이 오면 `답변 <id>: <글자 수>자, <초>초` 줄이 찍힌다.
 - 연결이 끊기면 스스로 1초 → 최대 60초 간격으로 다시 접속한다.
