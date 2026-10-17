@@ -4,7 +4,7 @@ import type { Extension } from '@codemirror/state';
 import { CodeEditor } from '../view/editor';
 import { Stage, el, showValue, type StageView } from '../view/stage';
 import { TERMS, narrate, narrationText, narrationView, type Spot, type Term } from '../view/narrate';
-import { askPanel } from '../view/ask';
+import { aiDock } from '../view/ask';
 import { Session } from '../trace/session';
 import type { HeapObj, Trace } from '../trace/types';
 import { runCode, LockedError, loginUrl } from '../api';
@@ -152,7 +152,6 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     }
     return out.join('\n');
   };
-  legendBox.after(askPanel(screenContext));
   stage.clear();
   let disposed = false;
   let sourceLines: string[] = [];
@@ -454,8 +453,25 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     });
     void run();
   }
+  // AI 도우미: 화면 상태(session·editor)를 읽으므로 모두 만든 뒤에 붙인다
+  const ai = aiDock({
+    context: screenContext,
+    summary: () => {
+      const sample = ui.sample.selectedOptions[0]?.textContent ?? '';
+      const step = session?.step;
+      return [lang.name, sample, step && session ? `${session.cur + 1}/${session.steps.length}단계 · ${step.line}줄` : '실행 전'].filter(Boolean).join(' · ');
+    },
+    suggestions: () => {
+      const step = session?.step;
+      return step
+        ? [`지금 ${step.line}줄은 무엇을 하나요?`, '방금 바뀐 값은 왜 그렇게 바뀌었나요?', '지금 스택과 힙에 무엇이 있는지 설명해 주세요']
+        : ['이 코드는 전체적으로 무엇을 하나요?', '실행하면 어떤 순서로 실행되나요?'];
+    },
+    onLine: (n) => editor.flashLine(n),
+  });
   return () => {
     disposed = true;
+    ai.dispose();
     setPlaying(false);
     document.removeEventListener('keydown', onKey);
     stage.dispose();

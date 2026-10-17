@@ -11,5 +11,5 @@ WEB=$(cd "$D/../../web" && pwd)
 mkdir -p "$D/out" && rm -f "$D/out/"*.png
 exec docker run --rm --network none --label app=codestep --cpus 2 --memory 1536m --memory-swap 1536m --pids-limit 512 \
   --cap-drop ALL --security-opt no-new-privileges --ipc private --shm-size 512m \
-  -v "$WEB/dist:/dist:ro,z" -v "$D:/shot:z" -w /shot --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  -v "${DIST:-$WEB/dist}:/dist:ro,z" -v "$D:/shot:z" -w /shot --user "$(id -u):$(id -g)" -e HOME=/tmp \
   mcr.microsoft.com/playwright@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 node /shot/run.mjs

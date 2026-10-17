@@ -3,24 +3,24 @@
 // 데스크탑은 포트를 열지 않는다.
 //
 //   브라우저  GET  /api/ask/status            AI 켜짐·연결 여부
-//            POST /api/ask                   {question, context} → {id}   (헤더 X-Codestep-AI: 접근 코드)
+//            POST /api/ask                   {question, context} → {id}   (누구나. 사람당·전체 시간당 횟수 제한)
 //            GET  /api/ask/:id/stream        답을 SSE로 흘려보낸다 (queue · delta · done · error)
 //   데스크탑  GET  /api/ai/next               질문 하나를 가져간다 (최대 25초 기다림, 없으면 204)
 //            POST /api/ai/answer/:id         {delta?, done?, error?}
 //            (둘 다 헤더 Authorization: Bearer <CODESTEP_AI_WORKER_TOKEN>)
 //
-// 설정(/etc/codestep/api.env): CODESTEP_AI_WORKER_TOKEN(데스크탑용), CODESTEP_AI_USER_CODE(사용자 접근 코드).
-// 둘 중 하나라도 없으면 AI는 꺼진다(fail closed).
+// 설정(/etc/codestep/api.env): CODESTEP_AI_WORKER_TOKEN(데스크탑용). 없으면 AI는 꺼진다(fail closed).
+// 사용자 접근 코드는 2026-10-17 사용자 결정으로 없앴다. 대신 사람당·전체 시간당 질문 수를 제한한다.
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 
 const WORKER_TOKEN = process.env.CODESTEP_AI_WORKER_TOKEN ?? '';
-const USER_CODE = process.env.CODESTEP_AI_USER_CODE ?? '';
-export const AI_ENABLED = WORKER_TOKEN.length >= 32 && USER_CODE.length >= 8;
+export const AI_ENABLED = WORKER_TOKEN.length >= 32;
 
 const MAX_QUESTION = 1000;      // 글자
 const MAX_CONTEXT = 24_000;     // 글자
 const MAX_QUEUE = 5;
-const PER_HOUR = 30;            // 사람(접근 코드·IP)당 시간당 질문 수
+const PER_HOUR = 30;            // 사람(IP)당 시간당 질문 수
+const ALL_PER_HOUR = 200;       // 전체 시간당 질문 수 (GPU 하나를 나눠 쓰므로)
 const PICK_TIMEOUT = 60_000;    // 데스크탑이 이 안에 가져가지 않으면 실패
 const IDLE_TIMEOUT = 90_000;    // 가져간 뒤 이만큼 아무 조각도 안 오면 실패
 const MAX_ANSWER = 16_000;      // 글자
@@ -47,9 +47,7 @@ function workerOk(req) {
   const h = req.headers.authorization ?? '';
   return AI_ENABLED && h.startsWith('Bearer ') && same(h.slice(7), WORKER_TOKEN);
 }
-function userOk(req) {
-  return AI_ENABLED && same(String(req.headers['x-codestep-ai'] ?? ''), USER_CODE);
-}
+let allAsked = [];               // 전체 최근 1시간 질문 시각들
 const online = () => Date.now() - lastPoll < 40_000;
 
 function emit(job, event, data) {
@@ -85,6 +83,7 @@ function hand() {
 // 오래된 일 정리와 시간 초과
 setInterval(() => {
   const now = Date.now();
+  for (const [who, list] of asked) if (!list.some((t) => now - t < 3600_000)) asked.delete(who);
   for (const [id, job] of jobs) {
     if (job.finished && now - job.finished > KEEP_DONE) { jobs.delete(id); continue; }
     if (job.finished) continue;
@@ -123,11 +122,12 @@ export async function handleAi(req, res, url) {
 
   if (req.method === 'POST' && p === '/api/ask') {
     if (!AI_ENABLED) { json(res, 503, { error: 'off', message: 'AI 질문 기능이 꺼져 있습니다.' }); return true; }
-    if (!userOk(req)) { json(res, 403, { error: 'code', message: '접근 코드가 맞지 않습니다.' }); return true; }
     const who = `${req.headers['cf-connecting-ip'] ?? 'anon'}`;
     const now = Date.now();
     const list = (asked.get(who) ?? []).filter((t) => now - t < 3600_000);
     if (list.length >= PER_HOUR) { json(res, 429, { error: 'rate', message: `질문은 한 시간에 ${PER_HOUR}번까지 할 수 있습니다.` }); return true; }
+    allAsked = allAsked.filter((t) => now - t < 3600_000);
+    if (allAsked.length >= ALL_PER_HOUR) { json(res, 429, { error: 'rate_all', message: '지금 질문이 너무 많습니다. 잠시 후 다시 질문해 주세요.' }); return true; }
     if (queue.length >= MAX_QUEUE) { json(res, 503, { error: 'busy', message: '질문이 밀려 있습니다. 잠시 후 다시 질문해 주세요.' }); return true; }
     let input;
     try { input = await body(req, 64 * 1024); } catch (e) { json(res, e.status ?? 400, { error: 'bad_request', message: '요청 형식이 잘못되었습니다.' }); return true; }
@@ -139,6 +139,7 @@ export async function handleAi(req, res, url) {
     }
     list.push(now);
     asked.set(who, list);
+    allAsked.push(now);
     const id = randomBytes(12).toString('hex');
     jobs.set(id, {
       created: now, picked: 0, touched: now, finished: 0, answer: 0, events: [], listeners: new Set(),

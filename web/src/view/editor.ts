@@ -84,6 +84,26 @@ const marksField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+// ── 잠깐 빛나는 줄 (AI 답변의 "N줄"을 눌렀을 때) ─────────
+
+const setFlash = StateEffect.define<number | null>();
+
+const flashField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (!e.is(setFlash)) continue;
+      const l = e.value;
+      deco = l !== null && l >= 1 && l <= tr.state.doc.lines
+        ? Decoration.set([Decoration.line({ class: 'cm-flash-line' }).range(tr.state.doc.line(l).from)])
+        : Decoration.none;
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 // ── 편집기 ────────────────────────────────────────────
 
 export interface EditorOptions {
@@ -120,6 +140,7 @@ export class CodeEditor {
         extensions: [
           breakpointField,
           marksField,
+          flashField,
           bpGutter,
           lineNumbers(),
           history(),
@@ -173,6 +194,16 @@ export class CodeEditor {
       this.view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'nearest' }) });
     }
   }
+
+  /** 그 줄로 스크롤하고 잠깐 빛나게 한다 */
+  flashLine(line: number): void {
+    const doc = this.view.state.doc;
+    if (line < 1 || line > doc.lines) return;
+    this.view.dispatch({ effects: [setFlash.of(line), EditorView.scrollIntoView(doc.line(line).from, { y: 'center' })] });
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => this.view.dispatch({ effects: setFlash.of(null) }), 1800);
+  }
+  private flashTimer?: ReturnType<typeof setTimeout>;
 
   private toggleBreakpointAt(pos: number): void {
     let on = true;
