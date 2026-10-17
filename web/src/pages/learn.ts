@@ -6,7 +6,7 @@
 //                          · 코드 문제: 디버거로 한 줄씩 실행 (값이 바뀌는 모습)
 //                          · 이론 문제: 알아야 할 기초 지식 그림 (애니메이션)
 //                          · 계산 문제: 이 문제 그대로의 시뮬레이터
-import { ALL, CATEGORIES, byId, listOf, roundById } from '../exam/data';
+import { ALL, CATEGORIES, ROUNDS, byId, listOf, roundById } from '../exam/data';
 import type { Category, Problem } from '../exam/problems';
 import { answerHint, answerOf, filledCode, score } from '../exam/answer';
 import * as store from '../exam/store';
@@ -45,6 +45,44 @@ export function mountLearn(root: HTMLElement, path: string): () => void {
   return done;
 }
 
+// ── 출제 빈도 ─────────────────────────────────────────
+// 회차 모의고사(2020년 개편 이후 전 회차)는 회차마다 실제로 나온 개념을 재현해 두었다.
+// 그래서 "그 개념이 나온 회차 수"를 중요도로 쓴다. 개념을 확인하지 못해 경향으로 채운 문항(trend)은 뺀다.
+
+interface Freq { rounds: number; span: string; concept: Map<string, number>; cat: Map<Category, number>; total: number }
+let freqCache: Freq | null = null;
+function freq(): Freq {
+  if (freqCache) return freqCache;
+  const concept = new Map<string, Set<string>>(CONCEPTS.map((c) => [c.id, new Set()]));
+  const cat = new Map<Category, number>();
+  let total = 0;
+  for (const r of ROUNDS) for (const p of r.problems) {
+    if (p.trend) continue;
+    total++;
+    cat.set(p.cat, (cat.get(p.cat) ?? 0) + 1);
+    for (const c of conceptsFor(p, 2)) concept.get(c.id)!.add(r.id);
+  }
+  const years = ROUNDS.map((r) => Number(r.id.slice(0, 4)));
+  freqCache = {
+    rounds: ROUNDS.length, span: `${Math.min(...years)}~${Math.max(...years)}년`, total, cat,
+    concept: new Map([...concept].map(([k, v]) => [k, v.size])),
+  };
+  return freqCache;
+}
+/** 출제 회차 수 → 3 빈출 · 2 자주 · 1 가끔 · 0 기록 없음 */
+const tierOf = (n: number) => (n >= 9 ? 3 : n >= 5 ? 2 : n >= 1 ? 1 : 0);
+const TIER = ['', '가끔', '자주', '빈출'];
+function tierChip(n: number): HTMLElement {
+  const t = tierOf(n);
+  const chip = el('span', `freq freq-${t}`, t ? `${'★'.repeat(t)} ${TIER[t]}` : '출제 기록 없음');
+  chip.title = `${freq().span} ${freq().rounds}개 회차 중 ${n}회 출제`;
+  return chip;
+}
+
+const SORT_KEY = 'codestep.learn.sort';
+const getSort = (): 'freq' | 'study' => { try { return localStorage.getItem(SORT_KEY) === 'study' ? 'study' : 'freq'; } catch { return 'freq'; } };
+const setSort = (v: 'freq' | 'study') => { try { localStorage.setItem(SORT_KEY, v); } catch { /* 무시 */ } };
+
 // ── 첫 화면: 개념 지도 ─────────────────────────────────
 
 function renderHome(root: HTMLElement) {
@@ -54,23 +92,71 @@ function renderHome(root: HTMLElement) {
     el('p', 'exam-lead', '시험처럼 채점만 하는 곳이 아니라, 문제를 풀면서 바로 옆에서 그림으로 확인하는 곳입니다. 코드 문제는 한 줄씩 실행하며 값이 바뀌는 모습을 보고, 이론 문제는 알아야 할 기초 지식을 애니메이션으로 봅니다.'),
   );
   const rel = problemsOf(ALL);
-  page.append(el('h3', 'exam-sec', '개념 지도'), el('p', 'muted small', '개념을 누르면 그림으로 크게 보고, 그 개념이 나오는 문제를 이어서 풀 수 있습니다.'));
-  for (const cat of CAT_ORDER) {
-    const cs = CONCEPTS.filter((c) => c.cat === cat);
-    if (!cs.length) continue;
-    const row = el('div', 'concept-row');
-    row.append(el('span', `chip cat-${cat}`, catName(cat)));
-    const grid = el('div', 'concept-grid');
-    for (const c of cs) {
-      const card = link(`/learn/c/${c.id}`, 'concept-card', '');
-      card.append(el('b', '', c.name));
-      if (c.en) card.append(el('span', 'concept-en', c.en));
-      card.append(el('p', '', c.summary), el('span', 'muted small', `관련 문제 ${rel.get(c.id)!.length}개`));
-      grid.append(card);
+  const f = freq();
+  const mapHead = el('div', 'concept-head');
+  const seg = el('div', 'seg');
+  seg.setAttribute('role', 'group');
+  seg.setAttribute('aria-label', '정렬');
+  const bFreq = el('button', '', '중요도순');
+  const bStudy = el('button', '', '학습 순서');
+  bFreq.title = '시험에 자주 나온 과목·개념부터';
+  bStudy.title = '기초부터 차례로 (과목별 기본 순서)';
+  seg.append(bFreq, bStudy);
+  mapHead.append(el('h3', 'exam-sec', '개념 지도'), seg);
+  const note = el('p', 'muted small');
+  const map = el('div', 'concept-map');
+  page.append(mapHead, note, map);
+
+  function drawMap() {
+    const sort = getSort();
+    bFreq.classList.toggle('on', sort === 'freq');
+    bStudy.classList.toggle('on', sort === 'study');
+    bFreq.setAttribute('aria-pressed', String(sort === 'freq'));
+    bStudy.setAttribute('aria-pressed', String(sort === 'study'));
+    note.textContent = sort === 'freq'
+      ? `시험에 자주 나온 순서입니다. 중요도는 ${f.span} ${f.rounds}개 회차에서 그 개념이 나온 회차 수로 매겼습니다(★★★ 9회 이상 · ★★ 5회 이상 · ★ 1회 이상). 개념을 누르면 그림으로 크게 보고, 관련 문제를 이어서 풀 수 있습니다.`
+      : '기초부터 차례로 보는 순서입니다. 개념을 누르면 그림으로 크게 보고, 그 개념이 나오는 문제를 이어서 풀 수 있습니다.';
+    const n = (id: string) => f.concept.get(id) ?? 0;
+    // 중요도순에서는 개념이 하나씩뿐인 언어 과목(Java·C·Python)을 "프로그래밍 언어" 한 줄로 묶는다
+    const LANGS: Category[] = ['java', 'c', 'python'];
+    const groups: { cls: Category; name: string; cats: Category[] }[] = CAT_ORDER
+      .filter((cat) => CONCEPTS.some((c) => c.cat === cat) && (sort === 'study' || !LANGS.includes(cat)))
+      .map((cat) => ({ cls: cat, name: catName(cat), cats: [cat] }));
+    const count = (g: { cats: Category[] }) => g.cats.reduce((t, c) => t + (f.cat.get(c) ?? 0), 0);
+    if (sort === 'freq') {
+      groups.push({ cls: 'java', name: '프로그래밍 언어', cats: LANGS.filter((cat) => CONCEPTS.some((c) => c.cat === cat)) });
+      groups.sort((a, b) => count(b) - count(a));
     }
-    row.append(grid);
-    page.append(row);
+    map.replaceChildren();
+    for (const g of groups) {
+      const cs = CONCEPTS.filter((c) => g.cats.includes(c.cat));
+      if (sort === 'freq') cs.sort((a, b) => n(b.id) - n(a.id) || rel.get(b.id)!.length - rel.get(a.id)!.length);
+      const row = el('div', 'concept-row');
+      const label = el('div', 'concept-cat');
+      label.append(el('span', `chip cat-${g.cls}`, g.name));
+      if (sort === 'freq') {
+        const share = Math.round((count(g) / f.total) * 100);
+        const s = el('span', 'muted small', `출제 비중 ${share}%`);
+        s.title = `${f.span} ${f.rounds}개 회차 ${f.total}문항 중 ${count(g)}문항`;
+        label.append(s);
+      }
+      row.append(label);
+      const grid = el('div', 'concept-grid');
+      for (const c of cs) {
+        const card = link(`/learn/c/${c.id}`, 'concept-card', '');
+        const top = el('div', 'concept-top');
+        top.append(el('b', '', c.name), tierChip(n(c.id)));
+        card.append(top);
+        if (c.en) card.append(el('span', 'concept-en', c.en));
+        card.append(el('p', '', c.summary), el('span', 'muted small', `${f.rounds}회 중 ${n(c.id)}회 출제 · 관련 문제 ${rel.get(c.id)!.length}개`));
+        grid.append(card);
+      }
+      row.append(grid);
+      map.append(row);
+    }
   }
+  for (const [b, v] of [[bFreq, 'freq'], [bStudy, 'study']] as const) b.addEventListener('click', () => { setSort(v); drawMap(); });
+  drawMap();
   page.append(el('h3', 'exam-sec', '문제로 학습하기'), el('p', 'muted small', '유형을 고르면 첫 문제부터 그림과 함께 풀어 나갑니다. 회차 모의고사 문제도 모두 들어 있습니다.'));
   const grid = el('div', 'exam-cats');
   const marks = store.marks();
@@ -92,6 +178,12 @@ function renderConcept(root: HTMLElement, c: Concept, cleanup: (() => void)[]) {
   const page = el('div', 'learn-concept');
   const head = el('div', 'panel learn-chead');
   head.append(link('/learn', 'exam-back', '← 개념 지도'), el('span', `chip cat-${c.cat}`, catName(c.cat)), el('h2', 'exam-title', c.name));
+  {
+    const n = freq().concept.get(c.id) ?? 0;
+    const chip = tierChip(n);
+    chip.textContent += ` · ${freq().rounds}회 중 ${n}회 출제`;
+    head.append(chip);
+  }
   if (c.en) head.append(el('span', 'concept-en', c.en));
   head.append(el('p', 'exam-lead', c.summary));
   const viz = c.make();

@@ -296,7 +296,15 @@ button.danger { border-color: var(--error); color: var(--error); }
 /* ── 학습 화면 ── */
 .learn-home { max-width: 1160px; margin: 0 auto; padding: 20px 24px; gap: 10px; }
 .concept-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: start; }
-.concept-row > .chip { justify-self: start; margin-top: 10px; }
+.concept-cat { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 10px; }
+.concept-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.concept-map { display: flex; flex-direction: column; gap: 10px; }
+.concept-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.freq { flex: none; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--line); color: var(--muted); }
+.freq-3 { color: #dc2626; border-color: #dc262655; background: #dc262614; }
+.freq-2 { color: #d97706; border-color: #d9770655; background: #d9770614; }
+.freq-1 { color: var(--muted); }
+.learn-chead .freq { align-self: flex-start; }
 .concept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .concept-card { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); color: var(--text); text-decoration: none; background: var(--panel); transition: transform 0.12s, border-color 0.12s; }
 .concept-card:hover { border-color: var(--accent); transform: translateY(-1px); }
