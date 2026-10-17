@@ -66,10 +66,10 @@ Node.js가 없거나 18 미만이면 설치하지 말고 그 사실만 보고한
 **Claude Code가 토큰 값을 보거나 옮기지 않는다.** 아래는 사용자가 직접 하도록 안내만 한다.
 
 **데스크탑(Windows)의 AI 관련 파일은 `D:\AI` 폴더에서만 관리한다.** C 드라이브(사용자 폴더)에 두지 않는다.
-토큰 파일은 `D:\AI\codestep\token`이다.
+토큰 파일은 `D:\AI\token\codestep_token.txt`이다.
 
 1. 토큰을 담을 폴더를 만든다 (Claude Code가 해도 된다).
-   - Windows: `New-Item -ItemType Directory -Force "D:\AI\codestep"`
+   - Windows: `New-Item -ItemType Directory -Force "D:\AI\token"`
    - macOS·Linux: `mkdir -p ~/.codestep-ai && chmod 700 ~/.codestep-ai`
 2. **사용자**가 자기 터미널에서 홈서버에 접속해 토큰 값을 복사한다.
    ```
@@ -78,10 +78,15 @@ Node.js가 없거나 18 미만이면 설치하지 말고 그 사실만 보고한
    ```
    `=` 뒤의 값만 복사한다.
 3. **사용자**가 메모장 등으로 토큰 파일을 만들어 값만 붙여 넣고 저장한다.
-   - Windows: `D:\AI\codestep\token` (확장자 없이. 메모장의 "파일 형식"을 "모든 파일"로 골라 `.txt`가 붙지 않게 한다)
+   - Windows: `D:\AI\token\codestep_token.txt` (값 한 줄만. `=`·공백 없이)
    - macOS·Linux: `~/.codestep-ai/token`
 4. 파일을 본인만 읽게 한다 (Claude Code가 해도 된다. 값은 출력하지 않는다).
-   - Windows: `icacls "D:\AI\codestep\token" /inheritance:r /grant:r "$($env:USERNAME):(R,W)"`
+   - Windows: 계정을 **이름이 아니라 SID로** 지정한다. 사용자 이름과 컴퓨터 이름이 같은 PC에서는 icacls가 이름을
+     컴퓨터 SID로 풀어 본인이 파일을 못 읽게 된다(node: EPERM).
+     ```
+     $me=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value; icacls "D:\AI\token\codestep_token.txt" /inheritance:r /grant:r "*${me}:(R,W)"
+     ```
+     확인: `icacls "D:\AI\token\codestep_token.txt"` → 본인 계정 읽기·쓰기 한 줄만 있어야 한다.
    - macOS·Linux: `chmod 600 ~/.codestep-ai/token`
 
 **보고:** 토큰 파일 경로와 "파일 있음, 권한 제한함"만. 값은 절대 보고하지 않는다.
@@ -92,7 +97,7 @@ Node.js가 없거나 18 미만이면 설치하지 말고 그 사실만 보고한
 
 - Windows PowerShell
   ```
-  $env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\codestep\token"; node tools/ai-worker/worker.mjs --check
+  $env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\token\codestep_token.txt"; node tools/ai-worker/worker.mjs --check
   ```
 - macOS·Linux
   ```
@@ -116,7 +121,7 @@ Qwen3 계열은 "생각(think)" 출력이 길어질 수 있어 기본으로 끈�
 ## 메뉴 5. 실행
 
 ```
-$env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\codestep\token"; node tools/ai-worker/worker.mjs     # Windows
+$env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\token\codestep_token.txt"; node tools/ai-worker/worker.mjs     # Windows
 MODEL_URL=http://127.0.0.1:8080/v1 node tools/ai-worker/worker.mjs             # macOS·Linux
 ```
 
