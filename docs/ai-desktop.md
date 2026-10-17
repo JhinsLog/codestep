@@ -126,7 +126,8 @@ $env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\to
 MODEL_URL=http://127.0.0.1:8080/v1 node tools/ai-worker/worker.mjs             # macOS·Linux
 ```
 
-- **이 데스크탑에서는 `D:\AI\codestep\start-worker.vbs`를 더블클릭한다.** (2026-10-17 설정)
+- **이 데스크탑에서는 바탕화면의 "codestep AI 연결" 바로가기(= `D:\AI\codestep\start-worker.vbs`)를 더블클릭한다.** (2026-10-17 설정)
+  이미 실행 중이면 "이미 실행 중"만 나오고 끝난다(중복 실행 방지). 나히다 앱도 켜져 있어야 답한다.
   `start-worker.vbs`가 창을 따로 띄워 `run-worker.ps1`(UTF-8 BOM)을 실행하고, 그 안에서 인코딩·환경 변수 두 개를 설정한 뒤
   위 명령을 돌린다. 출력은 `D:\AI\codestep\worker.log`에도 남는다.
 - Windows 함정 (직접 띄울 때):
