@@ -84,10 +84,11 @@ function thinkFilter() {
   };
 }
 
-/** 나히다 앱 상태. 앱이 꺼져 있으면 null */
+/** 나히다 앱 상태. 앱이 꺼져 있으면 null.
+ *  나히다의 /api/status는 안에서 닫힌 포트를 검사해 Windows에서 4초쯤 걸리므로 10초까지 기다린다 */
 async function nahida() {
   try {
-    const r = await fetch(`${NAHIDA_URL}/api/status`, { signal: AbortSignal.timeout(3000) });
+    const r = await fetch(`${NAHIDA_URL}/api/status`, { signal: AbortSignal.timeout(10_000) });
     if (!r.ok) return null;
     const j = await r.json();
     return { llm: !!j.llm, otherLlm: !!j.other_llm };
