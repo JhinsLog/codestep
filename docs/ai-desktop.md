@@ -65,8 +65,11 @@ Node.js가 없거나 18 미만이면 설치하지 말고 그 사실만 보고한
 토큰은 홈서버의 `/etc/codestep/api.env`에 `CODESTEP_AI_WORKER_TOKEN=…`로 들어 있다.
 **Claude Code가 토큰 값을 보거나 옮기지 않는다.** 아래는 사용자가 직접 하도록 안내만 한다.
 
+**데스크탑(Windows)의 AI 관련 파일은 `D:\AI` 폴더에서만 관리한다.** C 드라이브(사용자 폴더)에 두지 않는다.
+토큰 파일은 `D:\AI\codestep\token`이다.
+
 1. 토큰을 담을 폴더를 만든다 (Claude Code가 해도 된다).
-   - Windows: `New-Item -ItemType Directory -Force "$HOME\.codestep-ai"`
+   - Windows: `New-Item -ItemType Directory -Force "D:\AI\codestep"`
    - macOS·Linux: `mkdir -p ~/.codestep-ai && chmod 700 ~/.codestep-ai`
 2. **사용자**가 자기 터미널에서 홈서버에 접속해 토큰 값을 복사한다.
    ```
@@ -75,21 +78,21 @@ Node.js가 없거나 18 미만이면 설치하지 말고 그 사실만 보고한
    ```
    `=` 뒤의 값만 복사한다.
 3. **사용자**가 메모장 등으로 토큰 파일을 만들어 값만 붙여 넣고 저장한다.
-   - Windows: `%USERPROFILE%\.codestep-ai\token` (확장자 없이)
+   - Windows: `D:\AI\codestep\token` (확장자 없이. 메모장의 "파일 형식"을 "모든 파일"로 골라 `.txt`가 붙지 않게 한다)
    - macOS·Linux: `~/.codestep-ai/token`
 4. 파일을 본인만 읽게 한다 (Claude Code가 해도 된다. 값은 출력하지 않는다).
-   - Windows: `icacls "$HOME\.codestep-ai\token" /inheritance:r /grant:r "$($env:USERNAME):(R,W)"`
+   - Windows: `icacls "D:\AI\codestep\token" /inheritance:r /grant:r "$($env:USERNAME):(R,W)"`
    - macOS·Linux: `chmod 600 ~/.codestep-ai/token`
 
 **보고:** 토큰 파일 경로와 "파일 있음, 권한 제한함"만. 값은 절대 보고하지 않는다.
 
 ## 메뉴 4. 연결 확인
 
-저장소 폴더에서, 메뉴 1에서 찾은 모델 서버 주소를 넣어 실행한다.
+저장소 폴더에서, 메뉴 1에서 찾은 모델 서버 주소와 토큰 파일 위치를 넣어 실행한다.
 
 - Windows PowerShell
   ```
-  $env:MODEL_URL="http://127.0.0.1:8080/v1"; node tools/ai-worker/worker.mjs --check
+  $env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\codestep\token"; node tools/ai-worker/worker.mjs --check
   ```
 - macOS·Linux
   ```
@@ -113,7 +116,7 @@ Qwen3 계열은 "생각(think)" 출력이 길어질 수 있어 기본으로 끈�
 ## 메뉴 5. 실행
 
 ```
-$env:MODEL_URL="http://127.0.0.1:8080/v1"; node tools/ai-worker/worker.mjs     # Windows
+$env:MODEL_URL="http://127.0.0.1:8081/v1"; $env:CODESTEP_AI_TOKEN_FILE="D:\AI\codestep\token"; node tools/ai-worker/worker.mjs     # Windows
 MODEL_URL=http://127.0.0.1:8080/v1 node tools/ai-worker/worker.mjs             # macOS·Linux
 ```
 
