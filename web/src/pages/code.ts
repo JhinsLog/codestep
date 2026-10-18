@@ -157,6 +157,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
   let sourceLines: string[] = [];
 
   let trace: Trace | null = null;
+  let ranAt: { line: number; cur: number } | null = null;   // 줄을 눌러 온 단계
   let session: Session | null = null;
   let errorLines: number[] = [];
 
@@ -178,6 +179,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
         setStatus(`${line}줄은 실행되지 않았습니다.`);
         return;
       }
+      ranAt = { line, cur: session.cur };
       render();
     },
     onBreakpoints: (lines) => {
@@ -335,15 +337,18 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     if (!step) return;
     const prev = session.steps[session.cur - 1];
     const kind = step.event === 'exception' ? 'exception' : step.event === 'return' ? 'return' : 'line';
-    editor.mark(step.line, errorLines, kind);
+    // 줄을 눌러 온 그 단계에 머무는 동안만 누른 줄을 강조한다 (다른 단계로 가면 평소 표시)
+    if (ranAt && ranAt.cur !== session.cur) ranAt = null;
+    const ran = ranAt && ranAt.line !== step.line ? ranAt.line : null;
+    editor.mark(step.line, errorLines, kind, ran);
     stage.render(step, prev, { index: session.cur, steps: session.steps, source: sourceLines, stdout: trace.stdout, lang: lang.id });
     narrBox.replaceChildren(...narrationView(narrate(step, prev, sourceLines, trace.stdout, lang.id), showTerm));
     ui.console.textContent = trace.stdout.slice(0, step.out);
     ui.slider.max = String(session.last);
     ui.slider.value = String(session.cur);
     const visits = session.visitsOf(step.line);
-    ui.pos.textContent = `${session.cur + 1} / ${session.steps.length}${trace.cut ? '+' : ''} · ${step.line}줄 ${EVENT_LABEL[step.event]}`
-      + (visits > 1 ? ` · ${visits}번째` : '');
+    ui.pos.textContent = `${session.cur + 1} / ${session.steps.length}${trace.cut ? '+' : ''} · `
+      + (ran ? `${ran}줄 실행 직후 (다음 ${step.line}줄)` : `${step.line}줄 ${EVENT_LABEL[step.event]}${visits > 1 ? ` · ${visits}번째` : ''}`);
     updateButtons();
   }
 

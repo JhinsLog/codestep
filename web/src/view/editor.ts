@@ -55,7 +55,7 @@ const breakpointField = StateField.define<RangeSet<GutterMarker>>({
 
 // ── 현재 줄 / 오류 줄 ─────────────────────────────────
 
-const setMarks = StateEffect.define<{ current: number | null; errors: number[]; kind: 'line' | 'return' | 'exception' }>();
+const setMarks = StateEffect.define<{ current: number | null; errors: number[]; kind: 'line' | 'return' | 'exception'; ran?: number | null }>();
 
 const marksField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -73,7 +73,12 @@ const marksField = StateField.define<DecorationSet>({
         }
       }
       const c = e.value.current;
-      if (c !== null && c >= 1 && c <= doc.lines) {
+      const ran = e.value.ran;
+      // 줄을 눌러 왔으면: 누른 줄(방금 실행한 줄)을 진하게, 다음에 실행할 줄은 옅게
+      if (ran != null && ran >= 1 && ran <= doc.lines && ran !== c) {
+        ranges.push(Decoration.line({ class: 'cm-ran-line' }).range(doc.line(ran).from));
+        if (c !== null && c >= 1 && c <= doc.lines) ranges.push(Decoration.line({ class: 'cm-next-line' }).range(doc.line(c).from));
+      } else if (c !== null && c >= 1 && c <= doc.lines) {
         ranges.push(Decoration.line({ class: `cm-current-line cm-current-${e.value.kind}` }).range(doc.line(c).from));
       }
       ranges.sort((a, b) => a.from - b.from);
@@ -186,11 +191,12 @@ export class CodeEditor {
     if (!on) this.mark(null, [], 'line');
   }
 
-  /** 현재 실행 줄과 오류 줄 표시 */
-  mark(current: number | null, errors: number[], kind: 'line' | 'return' | 'exception'): void {
-    this.view.dispatch({ effects: setMarks.of({ current, errors, kind }) });
-    if (current !== null && current >= 1 && current <= this.view.state.doc.lines) {
-      const pos = this.view.state.doc.line(current).from;
+  /** 현재 실행 줄과 오류 줄 표시. ran: 사용자가 눌러서 "실행 직후"로 온 줄 */
+  mark(current: number | null, errors: number[], kind: 'line' | 'return' | 'exception', ran: number | null = null): void {
+    this.view.dispatch({ effects: setMarks.of({ current, errors, kind, ran }) });
+    const show = ran ?? current;
+    if (show !== null && show >= 1 && show <= this.view.state.doc.lines) {
+      const pos = this.view.state.doc.line(show).from;
       this.view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'nearest' }) });
     }
   }

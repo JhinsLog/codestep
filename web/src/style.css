@@ -199,6 +199,9 @@ p.muted { margin: 0; }
 .cm-debugging .cm-line:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .cm-current-line { background: var(--accent-soft) !important; box-shadow: inset 3px 0 0 var(--accent); }
 .cm-current-return { background: var(--ret) !important; }
+/* 줄을 눌러 "실행 직후"로 왔을 때: 누른 줄은 진하게, 다음에 실행할 줄은 옅은 점선 막대만 */
+.cm-ran-line { background: var(--accent-soft) !important; box-shadow: inset 3px 0 0 var(--accent); }
+.cm-next-line { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent-soft) 35%, transparent) !important; }
 .cm-current-exception, .cm-error-line { background: var(--error-soft) !important; box-shadow: inset 3px 0 0 var(--error); }
 .console { display: flex; flex-direction: column; gap: 4px; }
 .console pre {
