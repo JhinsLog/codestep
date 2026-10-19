@@ -4,6 +4,7 @@ import { runSql } from '../sql/engine';
 import { buildSteps, show, type SqlTrace, type Snapshot } from '../sql/steps';
 import { SAMPLES } from '../sql/samples';
 import { el } from '../view/stage';
+import { useAi } from '../view/ask';
 
 const TEMPLATE = `
 <div class="sqlide">
@@ -206,11 +207,46 @@ export function mountSql(root: HTMLElement, preset?: SqlPreset): () => void {
   };
   document.addEventListener('keydown', onKey);
 
+  // ── AI 도우미: 지금 화면(SQL·표 상태·단계)을 글로 정리해 함께 보낸다 ──
+  const screenContext = (): string => {
+    const out: string[] = ['[화면] SQL 실행 추적 — 쿼리를 실제 데이터베이스 엔진(SQLite)으로 실행하며 행 단위 처리 과정을 한 단계씩 보여 준다'];
+    out.push(`[테이블 준비 SQL]\n${ui.setup.value.slice(0, 4000)}`, `[추적할 쿼리]\n${ui.query.value.slice(0, 2000)}`);
+    if (!trace) return out.join('\n');
+    if (trace.error) out.push(`[오류] ${trace.error}`);
+    const step = trace.steps[cur];
+    if (step) {
+      out.push(`[진행] ${cur + 1} / ${trace.steps.length}단계${trace.cut ? '(앞부분만 기록)' : ''} — 지금 단계: ${step.text}`);
+      const from = Math.max(0, cur - 24);
+      out.push(`[지금까지의 단계] (${from + 1}~${cur + 1}단계)`);
+      trace.steps.slice(from, cur + 1).forEach((st, i) => out.push(`${from + i + 1}. ${st.text}`));
+      const sn = step.snap;
+      for (const tb of trace.tables) {
+        out.push(`[표 ${tb.name}] ${tb.cols.join(' | ')}`);
+        for (const row of tb.rows.slice(0, 60)) {
+          const rid = row[0] as number;
+          const v = sn.verdict[tb.name]?.[rid];
+          const mark = [sn.current[tb.name] === rid ? '← 지금 커서가 가리키는 행' : '', v === 'pass' ? '(결과에 들어감)' : v === 'fail' ? '(조건에서 걸러짐)' : ''].filter(Boolean).join(' ');
+          out.push(`  ${row.map((x) => show(x)).join(' | ')}${mark ? `   ${mark}` : ''}`);
+        }
+      }
+      out.push(`[지금까지 결과 행] ${sn.results.length ? '' : '(없음)'}`);
+      for (const r of sn.results.slice(0, 60)) out.push(`  ${r.map((x) => show(x)).join(' | ')}`);
+    }
+    return out.join('\n');
+  };
+  const unAi = useAi({
+    context: screenContext,
+    summary: () => (trace?.steps.length ? `SQL 추적 · ${cur + 1}/${trace.steps.length}단계` : 'SQL 추적'),
+    suggestions: () => (trace?.steps.length
+      ? ['지금 단계에서 무슨 일이 일어나고 있나요?', '결과가 왜 이렇게 나오나요?', '이 쿼리를 처리 순서대로 설명해 주세요']
+      : ['이 쿼리는 무엇을 하나요?']),
+  });
+
   if (preset) {
     (ui.sample.closest('.field') as HTMLElement).hidden = true;
     ui.setup.value = preset.setup;
     ui.query.value = preset.query;
   } else loadSample(0);
   void run();
-  return () => document.removeEventListener('keydown', onKey);
+  return () => { document.removeEventListener('keydown', onKey); unAi(); };
 }

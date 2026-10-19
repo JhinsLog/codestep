@@ -15,7 +15,7 @@ export interface AiDockOptions {
   /** 질문 순간의 화면 정보를 글로 */
   context: () => string;
   /** 창 위에 보여 줄 한 줄 요약 (예: "Java · 은행 예제 · 7/21단계 · 18줄") */
-  summary: () => string;
+  summary?: () => string;
   /** 빈 대화일 때 눌러 볼 질문 예 */
   suggestions?: () => string[];
   /** 답변의 "N줄"을 눌렀을 때 */
@@ -127,7 +127,7 @@ export function renderAnswer(text: string, onLine?: (n: number) => void): Docume
 
 interface Turn { q: string; a: string; card: HTMLElement; body: HTMLElement; err?: boolean }
 
-export function aiDock(o: AiDockOptions): { dispose(): void } {
+function aiDock(o: Required<Omit<AiDockOptions, 'onLine'>> & { onLine: () => ((n: number) => void) | undefined }) {
   // 여는 버튼 (오른쪽 아래)
   const fab = el('button', 'ai-fab');
   fab.type = 'button';
@@ -211,15 +211,15 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
   // 꺼져 있을 때는 자주(5초), 연결된 뒤에는 드물게(창 열림 15초·닫힘 60초) 확인한다.
   // 다른 창(나히다 등)에서 돌아와 이 탭을 다시 보면 곧바로 확인한다 → 새로고침 없이 상태가 바뀐다.
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let gone = false;
+  let active = false;
   function schedule() {
     clearTimeout(timer);
-    if (gone) return;
+    if (!active) return;
     const ms = !(enabled && online) ? 5_000 : box.hidden ? 60_000 : 15_000;
     timer = setTimeout(() => { if (document.hidden) schedule(); else void status(); }, ms);
   }
   let lastCheck = 0;
-  const onBack = () => { if (!document.hidden && Date.now() - lastCheck > 1500) void status(); };
+  const onBack = () => { if (active && !document.hidden && Date.now() - lastCheck > 1500) void status(); };
   document.addEventListener('visibilitychange', onBack);
   window.addEventListener('focus', onBack);
 
@@ -317,7 +317,7 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
     raf = requestAnimationFrame(() => {
       raf = 0;
       const stick = nearBottom();
-      t.body.replaceChildren(renderAnswer(t.a, o.onLine));
+      t.body.replaceChildren(renderAnswer(t.a, o.onLine()));
       if (stick) toBottom();
     });
   }
@@ -325,7 +325,7 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
     cancelAnimationFrame(raf); raf = 0;
     t.card.classList.remove('pending');
     if (err) { t.err = true; t.card.classList.add('err'); }
-    if (t.a) t.body.replaceChildren(renderAnswer(t.a, o.onLine));
+    if (t.a) t.body.replaceChildren(renderAnswer(t.a, o.onLine()));
     else t.body.replaceChildren();
     if (note) t.body.append(el('p', 'ai-note', note));
     t.card.classList.toggle('has-text', !!t.a && !err);
@@ -387,21 +387,60 @@ export function aiDock(o: AiDockOptions): { dispose(): void } {
     }
   }
 
-  paint();
-  void status();
-  if (store.get(OPEN_KEY)) open(false);
-
-  return {
-    dispose() {
-      gone = true;
+  function reset() {
+    if (busy) stop();
+    turns.length = 0;
+    log.replaceChildren();
+    paint();
+  }
+  /** 이 화면에 AI 도우미가 있는가. 없으면 버튼과 창을 숨긴다(열림 상태는 기억해 둔다) */
+  function setActive(on: boolean) {
+    if (on === active) return;
+    active = on;
+    if (on) {
+      if (store.get(OPEN_KEY)) open(false);
+      else { box.hidden = true; fab.hidden = false; layout(); }
+      void status();
+    } else {
       clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onBack);
-      window.removeEventListener('focus', onBack);
-      es?.close();
-      window.removeEventListener('resize', layout);
-      document.body.classList.remove('ai-docked');
-      fab.remove();
-      box.remove();
-    },
+      box.hidden = true;
+      fab.hidden = true;
+      layout();
+    }
+  }
+  paint();
+  fab.hidden = true;
+  return { setActive, reset };
+}
+
+// ── 화면마다 정보를 등록한다 ──
+// 창은 하나만 만들어 두고, 화면(코드 실습·SQL·학습 문제·개념·벼락)이 "지금 화면 정보"를 등록한다.
+// 학습 문제 안에 디버거가 들어가는 것처럼 겹치면, 바깥(문제) 정보와 안쪽(디버거) 정보를 이어서 보낸다.
+
+const sources: AiDockOptions[] = [];
+let dock: ReturnType<typeof aiDock> | null = null;
+let stale = false;   // 등록이 모두 풀렸다 = 다른 화면으로 옮겼다 → 다음 등록 때 대화를 지운다
+
+function lastOf<T>(f: (s: AiDockOptions) => T | undefined): T | undefined {
+  for (let i = sources.length - 1; i >= 0; i--) { const v = f(sources[i]!); if (v !== undefined) return v; }
+  return undefined;
+}
+
+/** 이 화면을 AI 도우미에 등록한다. 돌려받은 함수로 등록을 푼다(화면을 떠날 때) */
+export function useAi(src: AiDockOptions): () => void {
+  dock ??= aiDock({
+    context: () => sources.map((x) => x.context()).filter(Boolean).join('\n\n'),
+    summary: () => sources.map((x) => x.summary?.()).filter(Boolean).join(' › '),
+    suggestions: () => lastOf((x) => { const v = x.suggestions?.(); return v?.length ? v : undefined; }) ?? [],
+    onLine: () => lastOf((x) => x.onLine),
+  });
+  if (stale && !sources.length) dock.reset();
+  stale = false;
+  sources.push(src);
+  dock.setActive(true);
+  return () => {
+    const i = sources.indexOf(src);
+    if (i >= 0) sources.splice(i, 1);
+    if (!sources.length) { stale = true; dock?.setActive(false); }
   };
 }

@@ -4,7 +4,7 @@ import type { Extension } from '@codemirror/state';
 import { CodeEditor } from '../view/editor';
 import { Stage, el, showValue, type StageView } from '../view/stage';
 import { TERMS, narrate, narrationText, narrationView, type Spot, type Term } from '../view/narrate';
-import { aiDock } from '../view/ask';
+import { useAi } from '../view/ask';
 import { Session } from '../trace/session';
 import type { HeapObj, Trace } from '../trace/types';
 import { runCode, LockedError, loginUrl } from '../api';
@@ -459,7 +459,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
     void run();
   }
   // AI 도우미: 화면 상태(session·editor)를 읽으므로 모두 만든 뒤에 붙인다
-  const ai = aiDock({
+  const unAi = useAi({
     context: screenContext,
     summary: () => {
       const sample = ui.sample.selectedOptions[0]?.textContent ?? '';
@@ -476,7 +476,7 @@ export function mountCode(root: HTMLElement, lang: LangConfig, preset?: CodePres
   });
   return () => {
     disposed = true;
-    ai.dispose();
+    unAi();
     setPlaying(false);
     document.removeEventListener('keydown', onKey);
     stage.dispose();

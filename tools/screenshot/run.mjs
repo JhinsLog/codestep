@@ -15,7 +15,16 @@ const server = createServer((req, res) => {
   if (url.pathname === '/__ask') { askOnline = url.searchParams.get('online') === '1'; res.writeHead(204).end(); return; }
   if (url.pathname === '/api/ask/status') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ enabled: true, online: askOnline, queue: 0 })); return; }
   // 질문하면 정해 둔 답을 조각조각 흘려보낸다
-  if (url.pathname === '/api/ask' && req.method === 'POST') { req.resume(); req.on('end', () => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 'a'.repeat(24) }))); return; }
+  if (url.pathname === '/api/ask' && req.method === 'POST') {
+    let b = '';
+    req.on('data', (c) => (b += c));
+    req.on('end', () => {
+      const j = JSON.parse(b);
+      console.log(`[ask] q=${j.question}\n[ask] context(${j.context.length}자):\n${j.context.slice(0, 900)}\n…\n${j.context.slice(-500)}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: 'a'.repeat(24) }));
+    });
+    return;
+  }
   if (/^\/api\/ask\/a{24}\/stream$/.test(url.pathname)) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream' });
     const ans = '### 27줄 `kim.deposit(300)`\n\n**kim이 가리키는 Account 객체**의 `deposit` 메서드를 부릅니다.\n\n1. 스택에 `deposit` 프레임이 새로 생기고, `amount = 300`이 들어갑니다.\n2. 9줄에서 `balance += amount`가 실행되어 **balance가 1000 → 1300**으로 바뀝니다.\n3. 메서드가 끝나면 프레임이 사라지고 main으로 돌아옵니다.\n\n- 힙의 #40 객체 하나만 바뀌고, `lee`가 가리키는 객체는 그대로입니다.';

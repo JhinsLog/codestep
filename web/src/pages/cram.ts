@@ -5,6 +5,7 @@ import * as store from '../exam/store';
 import { conceptById } from '../learn/concepts';
 import { CRAM, cramSequence, pickProblems, type CramTopic } from '../cram/plan';
 import { el } from '../view/stage';
+import { useAi } from '../view/ask';
 import '../learn/learn.css';
 
 function link(href: string, cls: string, text: string): HTMLAnchorElement {
@@ -90,5 +91,10 @@ export function mountCram(root: HTMLElement): () => void {
   }
   page.append(el('p', 'muted small cram-note', '기출로 풀기의 문제는 기출 원문이 아니라, 그 회차에 나온 개념을 같은 형식으로 새로 쓴 회차 모의고사 문항입니다. 문제를 누르면 오른쪽(또는 아래)에서 그림으로 확인하며 풀 수 있고, 답은 이 브라우저에 저장됩니다.'));
   root.append(page);
-  return () => { store.flush(); };
+  const unAi = useAi({
+    context: () => `[화면] ⚡️벼락⚡️ — 시험 직전 요약과 기출(회차 재현) 문제 목록\n${page.innerText.trim().slice(0, 12000)}`,
+    summary: () => '⚡️벼락⚡️',
+    suggestions: () => ['코딩에서 가장 먼저 봐야 할 것은 무엇인가요?', '보안 외울 것을 표로 정리해 주세요', '응집도와 결합도 순서를 외우는 요령은?'],
+  });
+  return () => { unAi(); store.flush(); };
 }

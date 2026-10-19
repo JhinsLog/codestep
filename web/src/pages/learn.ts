@@ -12,6 +12,7 @@ import { answerHint, answerOf, filledCode, score } from '../exam/answer';
 import * as store from '../exam/store';
 import { CAT_ORDER, CONCEPTS, conceptById, conceptsFor, problemsOf, type Concept } from '../learn/concepts';
 import { cramSequence } from '../cram/plan';
+import { useAi } from '../view/ask';
 import type { Viz } from '../learn/core';
 import { el } from '../view/stage';
 import '../learn/learn.css';
@@ -192,6 +193,13 @@ function renderConcept(root: HTMLElement, c: Concept, cleanup: (() => void)[]) {
   const vbox = el('section', 'panel learn-vizbox');
   vbox.append(viz.el);
   const rel = problemsOf(ALL).get(c.id) ?? [];
+  cleanup.push(useAi({
+    context: () => [`[화면] 정보처리기사 학습 · 개념 "${c.name}"${c.en ? ` (${c.en})` : ''}`, `[요약] ${c.summary}`,
+      `[그림 칸의 글]\n${vbox.innerText.trim().slice(0, 5000)}`,
+      `[이 개념이 나오는 문제] ${rel.slice(0, 20).map((x) => x.title).join(', ')}`].join('\n'),
+    summary: () => `개념 · ${c.name}`,
+    suggestions: () => [`"${c.name}" 쉽게 설명해 주세요`, '시험에서는 어떻게 나오나요?', '헷갈리기 쉬운 점은 무엇인가요?'],
+  }));
   const side = el('section', 'panel learn-rel');
   side.append(el('h3', '', `이 개념이 나오는 문제 ${rel.length}개`));
   const ul = el('ul', 'exam-list');
@@ -246,6 +254,25 @@ function renderProblem(root: HTMLElement, p: Problem, cleanup: (() => void)[]) {
   const result = el('div', 'ex-result');
   result.hidden = true;
   qbox.append(result);
+  // AI 도우미: 문제 칸과 그림 칸의 글을 그대로 보낸다(정답·해설은 채점하거나 정답을 본 뒤에만 화면에 있다).
+  // 코드·SQL 문제는 아래 디버거가 따로 코드·표 상태를 이어서 보낸다
+  const where = p.round ? `${roundById(p.round)?.label} ${p.no}번` : catName(p.cat);
+  cleanup.push(useAi({
+    context: () => {
+      const out = [`[화면] 정보처리기사 학습${cram ? ' · ⚡️벼락' : ''} · 문제 풀이 (${catName(p.cat)} · ${where})`];
+      out.push(`[문제 칸의 글]\n${qbox.innerText.trim().slice(0, 8000)}`);
+      const mine = form.values().filter((v) => v.trim());
+      out.push(`[내가 쓴 답] ${mine.length ? mine.join(' / ') : '(아직 없음)'}`);
+      out.push(result.hidden ? '[채점 상태] 아직 채점하지 않았고 정답도 열어 보지 않았다' : '[채점 상태] 채점했거나 정답을 열어 보았다(정답·해설이 문제 칸에 있음)');
+      const viz = vizHost.isConnected ? vizHost.innerText.trim() : '';
+      if (viz) out.push(`[옆 그림 칸의 글]\n${viz.slice(0, 3000)}`);
+      return out.join('\n');
+    },
+    summary: () => `${cram ? '⚡️벼락' : '학습'} · ${where} · ${p.title}`,
+    suggestions: () => (result.hidden
+      ? ['이 문제는 무엇을 묻는 건가요?', '풀려면 어떤 개념을 알아야 하나요?', '정답 말고 힌트만 주세요']
+      : ['정답이 왜 이렇게 되나요?', '내 답은 어디가 틀렸나요?', '비슷한 문제에서 주의할 점은 무엇인가요?']),
+  }));
 
   // 그림 칸
   const vizHost = el('section', 'panel learn-viz');
