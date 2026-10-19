@@ -477,3 +477,6 @@ button.danger { border-color: var(--error); color: var(--error); }
 .cram-list .exam-item { font-size: 13px; }
 .cram-list .chip.trend { margin-left: 6px; font-size: 10.5px; }
 .cram-note { margin: 0 0 12px; }
+
+/* 학습 SQL 문제: 문제 바로 아래 쿼리 */
+.ex-code.learn-sqlq { font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }

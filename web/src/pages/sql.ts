@@ -13,13 +13,13 @@ const TEMPLATE = `
       <span>예제</span>
       <select data-id="sample"></select>
     </label>
-    <label class="field">
-      <span>테이블 준비</span>
-      <textarea data-id="setup" spellcheck="false" rows="9"></textarea>
-    </label>
-    <label class="field">
-      <span>추적할 쿼리</span>
+    <label class="field sql-query">
+      <span>추적할 쿼리 <em>— 이 쿼리를 한 행씩 따라갑니다</em></span>
       <textarea data-id="query" spellcheck="false" rows="3"></textarea>
+    </label>
+    <label class="field sql-setup">
+      <span>테이블 준비</span>
+      <textarea data-id="setup" spellcheck="false" rows="6"></textarea>
     </label>
     <button data-id="run" class="primary">실행하고 추적</button>
     <p data-id="status" class="status" role="status"></p>
@@ -176,12 +176,17 @@ export function mountSql(root: HTMLElement, preset?: SqlPreset): () => void {
     }
   }
 
+  // 쿼리 칸은 쿼리 전체가 보이게 줄 수에 맞춘다 (3~14줄)
+  const fitQuery = () => { ui.query.rows = Math.min(14, Math.max(3, ui.query.value.split('\n').length)); };
+  ui.query.addEventListener('input', fitQuery);
+
   SAMPLES.forEach((s, i) => ui.sample.append(new Option(s.label, String(i))));
   function loadSample(i: number) {
     const s = SAMPLES[i];
     if (!s) return;
     ui.setup.value = s.setup;
     ui.query.value = s.query;
+    fitQuery();
   }
   ui.sample.addEventListener('change', () => { loadSample(Number(ui.sample.value)); void run(); });
   ui.run.addEventListener('click', () => void run());
@@ -246,6 +251,7 @@ export function mountSql(root: HTMLElement, preset?: SqlPreset): () => void {
     (ui.sample.closest('.field') as HTMLElement).hidden = true;
     ui.setup.value = preset.setup;
     ui.query.value = preset.query;
+    fitQuery();
   } else loadSample(0);
   void run();
   return () => { document.removeEventListener('keydown', onKey); unAi(); };

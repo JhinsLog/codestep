@@ -239,6 +239,13 @@ function renderProblem(root: HTMLElement, p: Problem, cleanup: (() => void)[]) {
   qbox.append(head, el('h2', 'exam-title', p.title), el('p', 'ex-q', p.question));
   // 코드·SQL 문제는 아래 디버거에 코드와 표가 나오므로 자료를 따로 그리지 않는다 (빈칸 문제는 빈칸 코드를 보여 준다)
   if (!(p.kind === 'code' || isSql(p))) qbox.append(material(p));
+  // SQL 결과 문제는 무엇을 실행하는지가 핵심이므로 쿼리를 문제 바로 아래에 크게 보여 준다 (표는 아래 추적기에)
+  if (p.kind === 'sql') {
+    const qq = el('pre', 'ex-code learn-sqlq');
+    qq.dataset.lang = 'SQL';
+    qq.textContent = p.before ? `${p.before.trim()}\n\n${p.query.trim()}` : p.query.trim();
+    qbox.append(qq);
+  }
 
   const status = el('span', 'save-state muted small');
   const form = answerForm(p, store.draftOf(p.id), (vals) => store.setDraft(p.id, vals));
