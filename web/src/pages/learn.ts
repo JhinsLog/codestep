@@ -17,7 +17,7 @@ import type { Viz } from '../learn/core';
 import { el } from '../view/stage';
 import '../learn/learn.css';
 import { closeModal } from '../learn/modal';
-import { answerForm, material, saveIndicator, simulator } from './exam';
+import { answerForm, material, saveIndicator, setupTables, simulator } from './exam';
 import { mountJava } from './java';
 import { mountPython } from './python';
 import { mountC } from './c';
@@ -239,12 +239,20 @@ function renderProblem(root: HTMLElement, p: Problem, cleanup: (() => void)[]) {
   qbox.append(head, el('h2', 'exam-title', p.title), el('p', 'ex-q', p.question));
   // 코드·SQL 문제는 아래 디버거에 코드와 표가 나오므로 자료를 따로 그리지 않는다 (빈칸 문제는 빈칸 코드를 보여 준다)
   if (!(p.kind === 'code' || isSql(p))) qbox.append(material(p));
-  // SQL 결과 문제는 무엇을 실행하는지가 핵심이므로 쿼리를 문제 바로 아래에 크게 보여 준다 (표는 아래 추적기에)
-  if (p.kind === 'sql') {
-    const qq = el('pre', 'ex-code learn-sqlq');
-    qq.dataset.lang = 'SQL';
-    qq.textContent = p.before ? `${p.before.trim()}\n\n${p.query.trim()}` : p.query.trim();
-    qbox.append(qq);
+  // SQL 문제는 시험지처럼 문제 바로 아래에 쿼리(왼쪽)와 주어진 표(오른쪽)를 나란히 보여 준다.
+  // SQL 작성 문제는 쿼리가 없으므로 표만
+  if (isSql(p)) {
+    const row = el('div', 'learn-sqlrow');
+    if (p.kind === 'sql') {
+      const qq = el('pre', 'ex-code learn-sqlq');
+      qq.dataset.lang = 'SQL';
+      qq.textContent = p.before ? `${p.before.trim()}\n\n${p.query.trim()}` : p.query.trim();
+      row.append(qq);
+    }
+    const tb = el('div', 'learn-sqltables');
+    tb.append(setupTables(p.setup));
+    row.append(tb);
+    qbox.append(row);
   }
 
   const status = el('span', 'save-state muted small');

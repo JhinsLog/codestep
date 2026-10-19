@@ -333,7 +333,7 @@ button.play.on { background: var(--accent); border-color: var(--accent); color: 
 .sql-query > span { color: var(--accent); font-size: 12.5px; }
 .sql-query > span em { color: var(--muted); font-style: normal; font-weight: 500; }
 .sql-query textarea { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); font-size: 14px; font-weight: 600; }
-.sql-setup { flex: 1; min-height: 0; }
+.sql-setup { flex: 1 1 auto; min-height: 0; }
 .sql-setup textarea { flex: 1; min-height: 6em; }
 .controls { display: flex; align-items: center; gap: 6px; }
 .controls .pos { flex: 1; text-align: center; }

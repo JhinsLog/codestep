@@ -480,3 +480,13 @@ button.danger { border-color: var(--error); color: var(--error); }
 
 /* 학습 SQL 문제: 문제 바로 아래 쿼리 */
 .ex-code.learn-sqlq { font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+/* 쿼리 왼쪽 · 표 오른쪽 (좁으면 위아래) */
+.learn-sqlrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.learn-sqlrow:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.learn-sqltables { min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.learn-sqltables .ex-tables { gap: 12px; }
+.learn-sqltables .tablewrap h3 { margin-bottom: 4px; }
+@media (max-width: 900px) {
+  .learn-sqlrow { grid-template-columns: minmax(0, 1fr); }
+  .learn-ide .ide, .learn-ide .sqlide { height: auto; }   /* 좁으면 위아래로 쌓으므로 높이를 고정하지 않는다 */
+}

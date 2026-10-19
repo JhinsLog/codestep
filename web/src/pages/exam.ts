@@ -619,7 +619,7 @@ function tableEl(t: Table): HTMLElement {
 }
 
 /** setup SQL로 만든 표들을 보여 준다 */
-function setupTables(setup: string): HTMLElement {
+export function setupTables(setup: string): HTMLElement {
   const tables = el('div', 'ex-tables muted small', '표를 불러오는 중…');
   void runSql(setup, 'SELECT 1;').then((ev) => {
     const t = buildSteps(ev);
