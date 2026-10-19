@@ -4,6 +4,7 @@ import {
   AmbientLight, BoxGeometry, Color, LineBasicMaterial, DirectionalLight, Fog, GridHelper, Group, HemisphereLight, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, Object3D, PCFShadowMap, PerspectiveCamera, PlaneGeometry, Raycaster, Scene, ShadowMaterial,
   SphereGeometry, Sprite, SpriteMaterial, Vector2, Vector3, WebGLRenderer,
+  MOUSE,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -58,10 +59,12 @@ export class World {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFShadowMap;
     setAnisotropy(Math.min(8, this.renderer.capabilities.getMaxAnisotropy()));
-    this.el.append(this.renderer.domElement, el('div', 'world3d-help', '드래그 회전 · 휠 확대 · 우클릭 드래그 이동 · 블록을 누르면 설명'));
+    this.el.append(this.renderer.domElement, el('div', 'world3d-help', '드래그 이동 · 우클릭 드래그 회전 · 휠 확대 · 블록을 누르면 설명'));
     this.camera.position.set(1.5, 11, 14);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    // 왼쪽 드래그 = 이동, 오른쪽 드래그 = 회전 (사용자 요청), 휠 = 확대
+    this.controls.mouseButtons = { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
     this.controls.dampingFactor = 0.12;
     this.controls.maxPolarAngle = Math.PI * 0.47;
     this.controls.minDistance = 3;

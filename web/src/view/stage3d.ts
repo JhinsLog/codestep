@@ -12,6 +12,7 @@ import {
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, PlaneGeometry,
   QuadraticBezierCurve3, Raycaster, Scene, ShadowMaterial, Sprite, SpriteMaterial, TubeGeometry,
   Vector2, Vector3, WebGLRenderer, type Object3D,
+  MOUSE,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
@@ -640,7 +641,7 @@ export class Stage3D implements StageView {
     // 화면 위 글: 사건 배너, 빈 화면 안내, 조작법, 시점 버튼, 마우스 설명
     const banner = el('div', 's3d-banner');
     const msg = el('div', 's3d-msg');
-    const help = el('div', 's3d-help', '드래그 회전 · 휠 확대 · 우클릭 드래그 이동 · 더블클릭 시점 초기화');
+    const help = el('div', 's3d-help', '드래그 이동 · 우클릭 드래그 회전 · 휠 확대 · 더블클릭 시점 초기화');
     const reset = el('button', 's3d-reset', '⟲ 시점 맞추기');
     reset.hidden = true;
     reset.addEventListener('click', () => this.resetView());
@@ -652,6 +653,8 @@ export class Stage3D implements StageView {
     this.camera.position.set(6, 10, 18);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    // 왼쪽 드래그 = 이동, 오른쪽 드래그 = 회전 (사용자 요청), 휠 = 확대
+    this.controls.mouseButtons = { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
     this.controls.dampingFactor = 0.12;
     this.controls.maxPolarAngle = Math.PI * 0.47;
     this.controls.minDistance = 3;
